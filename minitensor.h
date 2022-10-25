@@ -13,31 +13,31 @@ typedef struct MTTensor  MTTensor;
 typedef struct MTContext MTContext;
 
 struct MTContext {
-    int        withgrads;
-    MTTensor **tracked;
-    int        ntracked;
-    int        cap;
+        int        withgrads;
+        MTTensor **tracked;
+        int        ntracked;
+        int        cap;
 };
 
 struct MTTensor {
-    float     *data;
-    long       datalen;
-    int      **indices;
-    int        isleaf;
-    int        ndeps;
-    int        ndims;
-    int        req_grad;
-    int       *shape;
-    int       *strides;
-    MTContext *context;
-    MTTensor **deps;
-    MTTensor  *grad;
-    MTTensor  *parent;
-    MTTensor *(*grad_fn)(MTTensor *self, MTTensor *grad);
+        float     *data;
+        long       datalen;
+        int      **indices;
+        int        isleaf;
+        int        ndeps;
+        int        ndims;
+        int        req_grad;
+        int       *shape;
+        int       *strides;
+        MTContext *context;
+        MTTensor **deps;
+        MTTensor  *grad;
+        MTTensor  *parent;
+        MTTensor *(*grad_fn)(MTTensor *self, MTTensor *grad);
 };
 
 // BFunc: alias for float(float, float) function
-typedef float *(*BFunc)(float, float);
+typedef float (*BFunc)(float, float);
 // TensorBFunc: alias for MTTensor*(MTTensor*, MTTensor*) function
 typedef MTTensor *(*TensorBFunc)(MTTensor *, MTTensor *);
 
@@ -83,9 +83,9 @@ void assert_true(int boolexp, char *test_desc, char *msg_if_wrong);
 #ifndef MINITENSOR_DISABLE_SHORTHANDS_  // {{{
 
 #define new_tensor(ctx, data, shape, ndim) \
-    (mt_new_tensor(ctx, data, shape, ndim))
+        (mt_new_tensor(ctx, data, shape, ndim))
 #define new_tensor_full(ctx, val, shape, ndim) \
-    (mt_new_tensor_full(ctx, val, shape, ndim))
+        (mt_new_tensor_full(ctx, val, shape, ndim))
 #define new_scalar(ctx, val) (mt_new_scalar(ctx, val))
 #define new_tensor_1(data, shape) (mt_new_tensor(ctx, data, shape, 1))
 #define new_tensor_2(data, shape) (mt_new_tensor(ctx, data, shape, 2))
@@ -124,16 +124,16 @@ void assert_true(int boolexp, char *test_desc, char *msg_if_wrong);
 // helper macros
 #define newptr(type, len) ((type *)calloc((len), sizeof(type)))
 #define mt_memcpy(to, from, len) (memcpy(to, from, (len) * sizeof(*from)))
-#define EXIT_WITH_ERROR(msg) ({ \
-    printf("error: %s\n", msg); \
-    exit(1);                    \
+#define EXIT_WITH_ERROR(msg) ({     \
+        printf("error: %s\n", msg); \
+        exit(1);                    \
 })
 
-#define mt_arrsame(a, b, len) ({                         \
-    int __mt_issame = 1;                                 \
-    for (long i = 0; i < len; i++)                       \
-        __mt_issame = __mt_issame && ((a[i]) == (b[i])); \
-    __mt_issame;                                         \
+#define mt_arrsame(a, b, len) ({                                 \
+        int __mt_issame = 1;                                     \
+        for (long i = 0; i < len; i++)                           \
+                __mt_issame = __mt_issame && ((a[i]) == (b[i])); \
+        __mt_issame;                                             \
 })
 
 // array inline expression literal

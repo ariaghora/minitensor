@@ -18,15 +18,17 @@ MTTensor *tensor_bfunc(MTTensor *a, MTTensor *b, BFunc bfunc) {
         if (a->context != b->context)
                 EXIT_WITH_ERROR("a and b cannot be in different context");
 
-        // TODO: following bloack of consecutive statements is very dirty. consider
-        //       resolving the target datalen, ndims, shape, etc according to broadcasting
-        //       rule.
+        /**
+         * TODO: following bloack of consecutive statements is very dirty. consider
+         *       resolving the target datalen, ndims, shape, etc according to broadcasting
+         *       rule.
+         */
         MTTensor *res = mt_alloc_empty_tensor(a->context);
-        res->data     = newptr(float, a->ndims > b->ndims ? a->datalen : b->datalen);
+        res->data     = mt_newptr(float, a->ndims > b->ndims ? a->datalen : b->datalen);
         res->datalen  = a->ndims > b->ndims ? a->datalen : b->datalen;
         res->ndims    = a->ndims > b->ndims ? a->ndims : b->ndims;
-        res->shape    = a->ndims > b->ndims ? newptr(int, a->ndims) : newptr(int, b->ndims);
-        res->strides  = a->ndims > b->ndims ? newptr(int, a->ndims) : newptr(int, b->ndims);
+        res->shape    = a->ndims > b->ndims ? mt_newptr(int, a->ndims) : mt_newptr(int, b->ndims);
+        res->strides  = a->ndims > b->ndims ? mt_newptr(int, a->ndims) : mt_newptr(int, b->ndims);
         res->isleaf   = 0;
 
         if (a->ndims > b->ndims) {
@@ -58,27 +60,27 @@ MTTensor *tensor_bfunc(MTTensor *a, MTTensor *b, BFunc bfunc) {
         return res;
 }
 
-// addition operation
+/* addition operation */
 float     __add(float a, float b) { return a + b; }
 void      __add_backward(MTTensor *grad);
 MTTensor *mt_tensor_add(MTTensor *a, MTTensor *b) {
         return tensor_bfunc(a, b, __add);
 }
 
-// subtraction operation
+/* subtraction operation */
 float     __sub(float a, float b) { return a - b; }
 void      __sub_backward(MTTensor *grad);
 MTTensor *mt_tensor_sub(MTTensor *a, MTTensor *b) {
         return tensor_bfunc(a, b, __sub);
 }
 
-// element-wise multiplication operation
+/* element-wise multiplication operation */
 float     __mul(float a, float b) { return a * b; }
 MTTensor *mt_tensor_mul(MTTensor *a, MTTensor *b) {
         return tensor_bfunc(a, b, __mul);
 }
 
-// sum operation
+/* sum operation */
 MTTensor *__sum_backward(MTTensor *self, MTTensor *grad) {
         MTTensor *ones = mt_new_tensor_full(grad->context, 1.0, self->shape,
                                             self->ndims);
@@ -88,7 +90,7 @@ MTTensor *mt_tensor_sum(MTTensor *t, int dim) {
         float sum = 0;
         for (long i = 0; i < t->datalen; i++)
                 sum += t->data[i];
-        MTTensor *res = new_scalar(t->context, sum);
+        MTTensor *res = mt_new_scalar(t->context, sum);
         res->isleaf   = 0;
 
         if (t->req_grad) {
@@ -111,8 +113,8 @@ MTTensor *mt_tensor_reduce(MTTensor *t, int dim, TensorBFunc bfunc) {
 
                 res = bfunc(res, sl);
 
-                tensor_free(tmp);
-                tensor_free(sl);
+                mt_tensor_free(tmp);
+                mt_tensor_free(sl);
         }
         mt_context_defrag(t->context);
         return res;

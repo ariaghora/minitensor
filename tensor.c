@@ -216,6 +216,40 @@ MTTensor *mt_tensor_slice(MTContext *ctx, MTTensor *t, int dim,
         return newtensor;
 }
 
+void mt_tensor_squeeze_dims(MTTensor *t, int *dims, int dimslen) {
+        int  *newshape   = mt_newptr(int, t->ndims - 1);
+        int  *newstrides = mt_newptr(int, t->ndims - 1);
+        int **newindices = mt_newptr(int *, t->ndims - 1);
+        int   cnt        = 0;
+        for (int i = 0; i < t->ndims; i++) {
+                int found = 0;
+                for (int j = 0; j < dimslen; j++) {
+                        // ignore when dims[j] > 1
+                        if (i != dims[j] && dims[j] == 1) {
+                                found = 1;
+                                break;
+                        }
+                }
+                if (!found) {
+                        newshape[cnt]   = t->shape[i];
+                        newstrides[cnt] = t->strides[i];
+                        newindices[cnt] = t->indices[i];
+                        cnt++;
+                }
+        }
+        t->ndims -= cnt;
+}
+
+void mt_tensor_squeeze_all(MTTensor *t) {
+        int dims[t->ndims];
+        for (int i = 0; i < t->ndims; i++) dims[i] = i;
+        mt_tensor_squeeze_dims(t, dims, t->ndims);
+}
+
+void mt_tensor_squeeze(MTTensor *t, int dim) {
+        mt_tensor_squeeze_dims(t, Arr(int, dim), 1);
+}
+
 void __free_indices(MTTensor *t) {
         if (t->indices != NULL)
                 for (int i = 0; i < t->ndims; i++)

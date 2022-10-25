@@ -43,7 +43,7 @@ void run_autograd_backward_tests(Test *t) {
 
         MTTensor *expgrad1 = mt_new_tensor(ctx, Arr(float, 1, 1, 1), Arr(int, 3, 1), 2);
 
-        MTTensor *sum = mt_tensor_sum(x, -1);
+        MTTensor *sum = mt_tensor_sum(x, -1, 0);
         assert_true(t, sum->data[0] == 6, "test tensor sum", "sum should be 6");
         mt_tensor_backward(sum, NULL);
         assert_true(t, x->grad != NULL, "test dependent grad non-null after backward", "dependent grad should not be null");
@@ -51,7 +51,7 @@ void run_autograd_backward_tests(Test *t) {
         assert_true(t, x->grad_fn != NULL, "test grad_fn not null", "grad_fn should not be NULL");
 
         MTTensor *expgrad2 = mt_new_tensor(ctx, Arr(float, 3, 3, 3), Arr(int, 3, 1), 2);
-        sum                = mt_tensor_sum(y, -1);
+        sum                = mt_tensor_sum(y, -1, 0);
         mt_tensor_backward(sum, mt_new_scalar(ctx, 3.0));
         assert_true(t, mt_is_tensor_eq(y->grad, expgrad2), "test dependent grad value", "grad value should be all 3");
         mt_free(ctx);

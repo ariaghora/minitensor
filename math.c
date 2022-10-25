@@ -86,12 +86,24 @@ MTTensor *__sum_backward(MTTensor *self, MTTensor *grad) {
                                             self->ndims);
         return mt_tensor_mul(grad, ones);
 }
-MTTensor *mt_tensor_sum(MTTensor *t, int dim) {
+MTTensor *mt_tensor_sum(MTTensor *t, int dim, int keepdim) {
+        if (dim > -1) return mt_tensor_reduce(t, dim, mt_tensor_add, keepdim);
+
+        // if dim == -1, then sum all elements, resulting a tensor with 1 value
         float sum = 0;
         for (long i = 0; i < t->datalen; i++)
                 sum += t->data[i];
+
         MTTensor *res = mt_new_scalar(t->context, sum);
-        res->isleaf   = 0;
+        // int shape[t->ndims];
+        // for (int i = 0; i < t->ndims; i++) shape[i] = 1;
+        // MTTensor *res = mt_new_tensor(t->context, Arr(float, sum), shape, t->ndims);
+        res->isleaf = 0;
+
+        // if (!keepdim) {
+        //         mt_tensor_squeeze_all(res);
+        //         res->ndims = 0;
+        // }
 
         if (t->req_grad) {
                 mt_tensor_enable_grad(res);
@@ -101,7 +113,7 @@ MTTensor *mt_tensor_sum(MTTensor *t, int dim) {
         return res;
 }
 
-MTTensor *mt_tensor_reduce(MTTensor *t, int dim, TensorBFunc bfunc) {
+MTTensor *mt_tensor_reduce(MTTensor *t, int dim, TensorBFunc bfunc, int keepdims) {
         if (t->shape[dim] <= 1)
                 EXIT_WITH_ERROR("cannot reduce at index with size <= 1");
 
@@ -117,5 +129,7 @@ MTTensor *mt_tensor_reduce(MTTensor *t, int dim, TensorBFunc bfunc) {
                 mt_tensor_free(sl);
         }
         mt_context_defrag(t->context);
+
+        if (!keepdims) mt_tensor_squeeze(res, dim);
         return res;
 }

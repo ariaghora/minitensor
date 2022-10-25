@@ -46,8 +46,8 @@ void run_tensor_subtraction_tests(Test *t) {
 void run_tensor_reduce_tests(Test *t) {
         MTContext *ctx     = mt_new_context();
         MTTensor  *x       = mt_new_tensor(ctx, Arr(float, 1, 2, 3, 4, 5, 6), Arr(int, 3, 2), 2);
-        MTTensor  *xslice1 = mt_tensor_reduce(x, 0, mt_tensor_add);
-        MTTensor  *xslice2 = mt_tensor_reduce(x, 1, mt_tensor_add);
+        MTTensor  *xslice1 = mt_tensor_reduce(x, 0, mt_tensor_add, 1);
+        MTTensor  *xslice2 = mt_tensor_reduce(x, 1, mt_tensor_add, 0);
         MTTensor  *exp1    = mt_new_tensor(ctx, Arr(float, 9, 12), Arr(int, 1, 2), 2);
         MTTensor  *exp2    = mt_new_tensor(ctx, Arr(float, 3, 7, 11), Arr(int, 3), 1);
 

@@ -77,14 +77,18 @@ float      mt_tensor_get_3(MTTensor *t, int i, int j, int k);
 MTTensor  *mt_new_scalar(MTContext *context, float val);
 MTTensor  *mt_tensor_slice(MTContext *ctx, MTTensor *t, int dim,
                            int *index, int indexlen);
+void       mt_tensor_squeeze_all(MTTensor *t);
+void       mt_tensor_squeeze_dims(MTTensor *t, int *dims, int dimslen);
+void       mt_tensor_squeeze(MTTensor *t, int dim); /* in-place squeeze */
+MTTensor  *mt_tensor_sum(MTTensor *t, int dim, int keepdims);
 void       mt_tensor_free(MTTensor *t);
 MTTensor  *mt_tensor_bfunc(MTTensor *a, MTTensor *b, BFunc bfunc);
 MTTensor  *mt_tensor_add(MTTensor *a, MTTensor *b);
 MTTensor  *mt_tensor_sub(MTTensor *a, MTTensor *b);
 MTTensor  *mt_tensor_mul(MTTensor *a, MTTensor *b);
 MTTensor  *mt_tensor_div(MTTensor *a, MTTensor *b);
-MTTensor  *mt_tensor_reduce(MTTensor *t, int dim, TensorBFunc bfunc);
-MTTensor  *mt_tensor_sum(MTTensor *t, int dim);
+MTTensor  *mt_tensor_reduce(MTTensor *t, int dim, TensorBFunc bfunc,
+                            int keepdims);
 MTContext *mt_new_context(void);
 void       mt_context_push_tensor(MTContext *ctx, MTTensor *t);
 void       mt_context_defrag(MTContext *ctx);

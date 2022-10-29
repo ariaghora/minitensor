@@ -4,7 +4,7 @@ typedef struct {
 } Test;
 
 #define new_test() ((Test){.nfail = 0, .npass = 0})
-#define assert_true(test, boolexp, test_desc, msg_if_wrong) ({                     \
+#define mt_assert_true(test, boolexp, test_desc, msg_if_wrong) ({                  \
         if (!(boolexp)) {                                                          \
                 printf("\033[31m[FAIL]\033[0m %s: %s\n", test_desc, msg_if_wrong); \
                 t->nfail++;                                                        \

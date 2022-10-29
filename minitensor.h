@@ -77,7 +77,6 @@ float      mt_tensor_get_3(MTTensor *t, int i, int j, int k);
 MTTensor  *mt_new_scalar(MTContext *context, float val);
 MTTensor  *mt_tensor_slice(MTContext *ctx, MTTensor *t, int dim,
                            int *index, int indexlen);
-void       mt_squeeze_aspects_at_dim(int targetdim, int *shape, int *strides, int **indices, int ndims);
 MTTensor  *mt_tensor_sum(MTTensor *t, int dim, int keepdims);
 void       mt_tensor_free(MTTensor *t);
 MTTensor  *mt_tensor_bfunc(MTTensor *a, MTTensor *b, BFunc bfunc);
@@ -89,7 +88,6 @@ MTTensor  *mt_tensor_reduce(MTTensor *t, int dim, TensorBFunc bfunc,
                             int keepdims);
 MTContext *mt_new_context(void);
 void       mt_context_push_tensor(MTContext *ctx, MTTensor *t);
-void       mt_context_defrag(MTContext *ctx);
 void       mt_free(MTContext *ctx);
 void       mt_tensor_enable_grad(MTTensor *t);
 void       mt_tensor_disable_grad(MTTensor *t);
@@ -97,7 +95,11 @@ void       mt_tensor_backward(MTTensor *t, MTTensor *grad);
 void       mt_tensor_zero_grad(MTTensor *t);
 int        mt_is_tensor_eq(MTTensor *a, MTTensor *b);
 void       mt_tensor_print_debug(MTTensor *t);
-void       assert_true(int boolexp, char *test_desc, char *msg_if_wrong);
+
+/* Internal API */
+void mt_squeeze_aspects_at_dim(int targetdim, int *shape, int *strides,
+                               int **indices, int ndims);
+void mt_context_defrag(MTContext *ctx);
 
 /* helper macros */
 #define mt_newptr(type, len) ((type *)calloc((len), sizeof(type)))

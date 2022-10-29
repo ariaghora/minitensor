@@ -16,10 +16,21 @@ typedef enum { CGM_REQUIRE_GRAD,
 typedef enum { DEVICE_CPU,
                DEVICE_GPU } MtDevice;
 
-/* BFunc: alias for float(float, float) function */
+/**
+ * BFunc: the float-float binary function, alias for float(float, float)
+ * function
+ */
 typedef float (*BFunc)(float, float);
-/* TensorBFunc: alias for MTTensor*(MTTensor*, MTTensor*) function */
+/**
+ * TensorBFunc: the tensor-tensor binary function, alias for
+ * MTTensor*(MTTensor**, MTTensor*) function
+ */
 typedef MTTensor *(*TensorBFunc)(MTTensor *, MTTensor *);
+/**
+ * TensorBackwardFunc: the backward function type, alias for
+ * MTTensor*(MTTensor**, MTTensor*) function
+ */
+typedef MTTensor *(*TensorBackwardFunc)(MTTensor **, MTTensor *);
 
 /**
  * A context manages information of underlying allocated tensors it tracks.
@@ -46,20 +57,20 @@ struct MTContext {
 };
 
 struct MTTensor {
-        float      *data;
-        long        datalen;
-        int       **indices;
-        int         isleaf;
-        int         ndeps;
-        int         ndims;
-        int         req_grad;
-        int        *shape;
-        int        *strides;
-        MTContext  *context;
-        MTTensor  **deps;
-        MTTensor   *grad;
-        MTTensor   *parent;
-        TensorBFunc grad_fn;
+        float             *data;
+        long               datalen;
+        int              **indices;
+        int                isleaf;
+        int                ndeps;
+        int                ndims;
+        int                req_grad;
+        int               *shape;
+        int               *strides;
+        MTContext         *context;
+        MTTensor         **deps;
+        MTTensor          *grad;
+        MTTensor          *parent;
+        TensorBackwardFunc grad_fn;
 };
 
 /* MTTensor main API */

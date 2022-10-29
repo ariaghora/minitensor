@@ -337,7 +337,7 @@ void mt_tensor_backward(MTTensor *t, MTTensor *grad) {
         t->grad = mt_tensor_add(t->grad, grad);
 
         for (int i = 0; i < t->ndeps; i++) {
-                MTTensor *bwgrad = t->deps[i]->grad_fn(t->deps[i], grad);
+                MTTensor *bwgrad = t->deps[i]->grad_fn(t->deps, grad);
                 mt_tensor_backward(t->deps[i], bwgrad);
         }
 }

@@ -71,7 +71,8 @@ MTTensor *mt_tensor_mul(MTTensor *a, MTTensor *b) {
 }
 
 /* sum operation */
-MTTensor *__sum_backward(MTTensor *self, MTTensor *grad) {
+MTTensor *__sum_backward(MTTensor **prtdeps, MTTensor *grad) {
+        MTTensor *self = prtdeps[0];
         MTTensor *ones = mt_new_tensor_full(grad->context, 1.0, self->shape,
                                             self->ndims);
         return mt_tensor_mul(grad, ones);

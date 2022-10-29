@@ -14,6 +14,8 @@ void run_tests(void) {
 
 #ifndef SKIP_MATH_TESTS
         run_tensor_addition_tests(&t);
+        run_tensor_subtraction_tests(&t);
+        run_tensor_sum_tests(&t);
 #endif
 
 #ifndef SKIP_AUTOGRAD_TESTS

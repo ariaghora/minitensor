@@ -17,6 +17,15 @@
         __found;                                     \
 })
 
+#define __printarr(arr, len, format) ({          \
+        printf("{");                             \
+        for (int __i = 0; __i < len; __i++) {    \
+                printf(format, arr[__i]);        \
+                if (__i < len - 1) printf(", "); \
+        }                                        \
+        printf("}");                             \
+})
+
 #define __prod(arr, len, T) ({        \
         T __p = 1;                    \
         for (int i = 0; i < len; i++) \
@@ -54,8 +63,17 @@ inline void __init_strides(MTTensor *t) {
                 t->strides[i] = prod;
         }
 }
+
+void __free_indices(MTTensor *t) {
+        if (t->indices != NULL)
+                for (int i = 0; i < t->ndims; i++)
+                        free(t->indices[i]);
+        free(t->indices);
+}
+
 inline void __init_indices(MTTensor *t) {
-        if (t->ndims == 0) return;
+        if (t->indices != NULL) __free_indices(t);
+        // if (t->ndims == 0) return;
 
         t->indices = mt_newptr(int *, t->ndims);
         for (int i = 0; i < t->ndims; i++) {
@@ -216,45 +234,14 @@ MTTensor *mt_tensor_slice(MTContext *ctx, MTTensor *t, int dim,
         return newtensor;
 }
 
-void mt_tensor_squeeze_dims(MTTensor *t, int *dims, int dimslen) {
-        int  *newshape   = mt_newptr(int, t->ndims - 1);
-        int  *newstrides = mt_newptr(int, t->ndims - 1);
-        int **newindices = mt_newptr(int *, t->ndims - 1);
-        int   cnt        = 0;
-        for (int i = 0; i < t->ndims; i++) {
-                int found = 0;
-                for (int j = 0; j < dimslen; j++) {
-                        // ignore when dims[j] > 1
-                        if (i != dims[j] && dims[j] == 1) {
-                                found = 1;
-                                break;
-                        }
-                }
-                if (!found) {
-                        newshape[cnt]   = t->shape[i];
-                        newstrides[cnt] = t->strides[i];
-                        newindices[cnt] = t->indices[i];
-                        cnt++;
-                }
+void mt_squeeze_aspects_at_dim(int targetdim, int *shape, int *strides, int **indices, int ndims) {
+        if (shape[targetdim] != 1) return;
+        free(indices[targetdim]);
+        for (int i = targetdim; i < ndims - 1; i++) {
+                shape[targetdim]   = shape[targetdim + 1];
+                strides[targetdim] = strides[targetdim + 1];
+                indices[targetdim] = indices[targetdim + 1];
         }
-        t->ndims -= cnt;
-}
-
-void mt_tensor_squeeze_all(MTTensor *t) {
-        int dims[t->ndims];
-        for (int i = 0; i < t->ndims; i++) dims[i] = i;
-        mt_tensor_squeeze_dims(t, dims, t->ndims);
-}
-
-void mt_tensor_squeeze(MTTensor *t, int dim) {
-        mt_tensor_squeeze_dims(t, Arr(int, dim), 1);
-}
-
-void __free_indices(MTTensor *t) {
-        if (t->indices != NULL)
-                for (int i = 0; i < t->ndims; i++)
-                        free(t->indices[i]);
-        free(t->indices);
 }
 
 void mt_tensor_free(MTTensor *t) {
@@ -357,6 +344,17 @@ void mt_tensor_backward(MTTensor *t, MTTensor *grad) {
 
 void mt_tensor_zero_grad(MTTensor *t) {
         t->grad = mt_new_tensor_full(t->context, 0., t->shape, t->ndims);
+}
+
+void mt_tensor_print_debug(MTTensor *t) {
+        printf("ndims : %d\n", t->ndims);
+        printf("ndeps : %d\n", t->ndeps);
+        printf("shape : "), __printarr(t->shape, t->ndims, "%d"), printf("\n");
+        printf("data \n");
+        printf("  - datalen : %ld\n", t->datalen);
+        printf("  - content : "), __printarr(t->data, t->datalen, "%.2f");
+        printf("\n");
+        printf("\n");
 }
 
 int mt_is_tensor_eq(MTTensor *a, MTTensor *b) {

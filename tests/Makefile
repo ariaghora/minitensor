@@ -13,7 +13,7 @@ test: minitensor_test
 
 .PHONY: test/dbgmem
 test/dbgmem: minitensor_test
-	@make clean && make && valgrind --track-origins=yes --leak-check=full -s ./minitensor_test && rm -f minitensor_test
+	@make clean && make && valgrind --track-origins=yes --leak-check=full --show-leak-kinds=all -s ./minitensor_test && rm -f minitensor_test
 
 clean:
 	@rm -f minitensor_test

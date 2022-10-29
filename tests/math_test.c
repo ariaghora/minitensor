@@ -27,12 +27,27 @@ void run_tensor_addition_tests(Test *t) {
         mt_free(ctx);
 }
 
+void run_tensor_sum_tests(Test *t) {
+        MTContext *ctx  = mt_new_context();
+        MTTensor  *x    = mt_new_tensor(ctx, Arr(float, 1, 2, 3, 4, 5, 6), Arr(int, 3, 2), 2);
+        MTTensor  *res1 = mt_tensor_sum(x, 0, 1);
+        MTTensor  *res2 = mt_tensor_sum(x, 0, 0);
+        MTTensor  *res3 = mt_tensor_sum(x, -1, 1);
+        MTTensor  *res4 = mt_tensor_sum(x, -1, 0);
+
+        assert_true(t, mt_is_tensor_eq(res1, mt_new_tensor(ctx, Arr(float, 9, 12), Arr(int, 1, 2), 2)), "test sum dim 0 keep dim", "must be {{1, 2}}");
+        assert_true(t, mt_is_tensor_eq(res2, mt_new_tensor(ctx, Arr(float, 9, 12), Arr(int, 2), 1)), "test sum dim 0 no keep dim", "must be {9, 12}");
+        assert_true(t, mt_is_tensor_eq(res3, mt_new_tensor(ctx, Arr(float, 21), Arr(int, 1, 1), 2)), "test sum all dims keep dim", "must be {{21}}");
+        assert_true(t, mt_is_tensor_eq(res4, mt_new_scalar(ctx, 21)), "test sum all dims no keep dim", "must be 21");
+        mt_free(ctx);
+}
+
 void run_tensor_subtraction_tests(Test *t) {
         MTContext *ctx       = mt_new_context();
         MTTensor  *x         = mt_new_tensor(ctx, Arr(float, 1, 2, 3, 4), Arr(int, 2, 2), 2);
         MTTensor  *y         = mt_new_tensor(ctx, Arr(float, 1, 2, 3, 4), Arr(int, 2, 2), 2);
         MTTensor  *z         = mt_new_tensor(ctx, Arr(float, 0, 0, 0, 0), Arr(int, 2, 2), 2);
-        MTTensor  *expected1 = mt_new_tensor(ctx, Arr(float, 2, 4, 6, 8), Arr(int, 2, 2), 2);
+        MTTensor  *expected1 = mt_new_tensor(ctx, Arr(float, 0, 0, 0, 0), Arr(int, 2, 2), 2);
         MTTensor  *expected2 = mt_new_tensor(ctx, Arr(float, 1, 2, 3, 4), Arr(int, 2, 2), 2);
 
         MTTensor *result1 = mt_tensor_sub(x, y);
@@ -52,7 +67,7 @@ void run_tensor_reduce_tests(Test *t) {
         MTTensor  *exp2    = mt_new_tensor(ctx, Arr(float, 3, 7, 11), Arr(int, 3), 1);
 
         assert_true(t, mt_is_tensor_eq(xslice1, exp1), "test tensor reduce along axis 0", "the result should be {{9, 12}}");
-        assert_true(t, mt_is_tensor_eq(xslice2, exp2), "test tensor reduce along axis 1 with squeeze", "the result should be {{3}, {7}, {11}}");
+        assert_true(t, mt_is_tensor_eq(xslice2, exp2), "test tensor reduce along axis 1 with squeeze", "the result should be {3, 7, 11}");
 
         mt_free(ctx);
 }

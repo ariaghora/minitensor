@@ -18,45 +18,35 @@ MTTensor *tensor_bfunc(MTTensor *a, MTTensor *b, BFunc bfunc) {
         if (a->context != b->context)
                 EXIT_WITH_ERROR("a and b cannot be in different context");
 
-        /**
-         * TODO: following bloack of consecutive statements is very dirty. consider
-         *       resolving the target datalen, ndims, shape, etc according to broadcasting
-         *       rule.
-         */
-        MTTensor *res = mt_alloc_empty_tensor(a->context);
-        res->data     = mt_newptr(float, a->ndims > b->ndims ? a->datalen : b->datalen);
-        res->datalen  = a->ndims > b->ndims ? a->datalen : b->datalen;
-        res->ndims    = a->ndims > b->ndims ? a->ndims : b->ndims;
-        res->shape    = a->ndims > b->ndims ? mt_newptr(int, a->ndims) : mt_newptr(int, b->ndims);
-        res->strides  = a->ndims > b->ndims ? mt_newptr(int, a->ndims) : mt_newptr(int, b->ndims);
-        res->isleaf   = 0;
-
-        if (a->ndims > b->ndims) {
-                mt_memcpy(res->shape, a->shape, a->ndims);
-                mt_memcpy(res->strides, a->strides, a->ndims);
-        } else {
-                mt_memcpy(res->shape, b->shape, b->ndims);
-                mt_memcpy(res->strides, b->strides, b->ndims);
-        }
+        float *resdata = mt_newptr(
+            float,
+            a->ndims > b->ndims ? a->datalen : b->datalen);
 
         if (a->ndims == 0) {
                 float val = a->data[0];
                 for (long i = 0; i < b->datalen; i++)
-                        res->data[i] = bfunc(val, b->data[i]);
+                        resdata[i] = bfunc(val, b->data[i]);
         } else if (b->ndims == 0) {
                 float val = b->data[0];
                 for (long i = 0; i < a->datalen; i++)
-                        res->data[i] = bfunc(a->data[i], val);
+                        resdata[i] = bfunc(a->data[i], val);
         } else {
                 for (long i = 0; i < a->datalen; i++)
-                        res->data[i] = bfunc(a->data[i], b->data[i]);
+                        resdata[i] = bfunc(a->data[i], b->data[i]);
         }
+        MTTensor *res = mt_new_tensor(
+            a->context,
+            resdata,
+            a->ndims > b->ndims ? a->shape : b->shape,
+            a->ndims > b->ndims ? a->ndims : b->ndims);
+        res->isleaf = 0;
 
         if (a->req_grad || b->req_grad) {
                 res->req_grad = 1;
                 mt_push_deps(res, a);
                 mt_push_deps(res, b);
         }
+        free(resdata);
         return res;
 }
 
@@ -89,22 +79,20 @@ MTTensor *__sum_backward(MTTensor *self, MTTensor *grad) {
 MTTensor *mt_tensor_sum(MTTensor *t, int dim, int keepdim) {
         if (dim > -1) return mt_tensor_reduce(t, dim, mt_tensor_add, keepdim);
 
-        // if dim == -1, then sum all elements, resulting a tensor with 1 value
         float sum = 0;
         for (long i = 0; i < t->datalen; i++)
                 sum += t->data[i];
 
-        MTTensor *res = mt_new_scalar(t->context, sum);
-        // int shape[t->ndims];
-        // for (int i = 0; i < t->ndims; i++) shape[i] = 1;
-        // MTTensor *res = mt_new_tensor(t->context, Arr(float, sum), shape, t->ndims);
+        MTTensor *res = NULL;
+        if (!keepdim) {
+                res = mt_new_scalar(t->context, sum);
+        } else {
+                int shape[t->ndims];
+                for (int i = 0; i < t->ndims; i++) shape[i] = 1;
+                res = mt_new_tensor(t->context, Arr(float, sum), shape, t->ndims);
+        }
+
         res->isleaf = 0;
-
-        // if (!keepdim) {
-        //         mt_tensor_squeeze_all(res);
-        //         res->ndims = 0;
-        // }
-
         if (t->req_grad) {
                 mt_tensor_enable_grad(res);
                 t->grad_fn = __sum_backward;
@@ -128,8 +116,12 @@ MTTensor *mt_tensor_reduce(MTTensor *t, int dim, TensorBFunc bfunc, int keepdims
                 mt_tensor_free(tmp);
                 mt_tensor_free(sl);
         }
+        if (!keepdims) {
+                mt_squeeze_aspects_at_dim(dim, res->shape, res->strides,
+                                          res->indices, res->ndims);
+                res->ndims--;
+        }
         mt_context_defrag(t->context);
 
-        if (!keepdims) mt_tensor_squeeze(res, dim);
         return res;
 }

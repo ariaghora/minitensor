@@ -56,3 +56,20 @@ void run_autograd_backward_tests(Test *t) {
         mt_assert_true(t, mt_is_tensor_eq(y->grad, expgrad2), "test dependent grad value", "grad value should be all 3");
         mt_free(ctx);
 }
+
+void run_autograd_add_tests(Test *t) {
+        MTContext *ctx = mt_new_context();
+        MTTensor  *x   = mt_new_tensor(ctx, Arr(float, 1, 2, 3), Arr(int, 3), 1);
+        MTTensor  *y   = mt_new_tensor(ctx, Arr(float, 4, 5, 6), Arr(int, 3), 1);
+        mt_tensor_enable_grad(x);
+        mt_tensor_enable_grad(y);
+
+        MTTensor *z = mt_tensor_add(x, y);
+        mt_assert_true(t, mt_is_tensor_eq(z, mt_new_tensor(ctx, Arr(float, 5, 7, 9), Arr(int, 3), 1)), "test simple add correct", "should be {5, 7, 9}");
+
+        mt_tensor_backward(z, mt_new_tensor(ctx, Arr(float, -1, -2, -3), Arr(int, 3), 1));
+        mt_assert_true(t, mt_is_tensor_eq(x->grad, mt_new_tensor(ctx, Arr(float, -1, -2, -3), Arr(int, 3), 1)), "test grad A+B wrt A", "should be {-1,-2,-3}");
+        mt_assert_true(t, mt_is_tensor_eq(y->grad, mt_new_tensor(ctx, Arr(float, -1, -2, -3), Arr(int, 3), 1)), "test grad A+B wrt B", "should be {-1,-2,-3}");
+
+        mt_free(ctx);
+}

@@ -52,9 +52,42 @@ MTTensor *tensor_bfunc(MTTensor *a, MTTensor *b, BFunc bfunc) {
 
 /* addition operation */
 float     __add(float a, float b) { return a + b; }
-void      __add_backward(MTTensor *grad);
+MTTensor *__add_backward_a(MTTensor **prtdeps, MTTensor *grad) {
+        MTTensor *self = prtdeps[0];
+        /* sum out added dims */
+        int ndims_added = grad->ndims - self->ndims;
+        for (int i = 0; i < ndims_added; i++)
+                grad = mt_tensor_sum(grad, 0, 0);
+        /* sum across broadcasted (but non-added dims) */
+        for (int i = 0; i < self->ndims; i++) {
+                if (self->shape[i] == 1)
+                        grad = mt_tensor_sum(grad, i, 1);
+        }
+        return grad;
+}
+MTTensor *__add_backward_b(MTTensor **prtdeps, MTTensor *grad) {
+        MTTensor *self = prtdeps[1];
+        /* sum out added dims */
+        int ndims_added = grad->ndims - self->ndims;
+        for (int i = 0; i < ndims_added; i++)
+                grad = mt_tensor_sum(grad, 0, 0);
+        /* sum across broadcasted (but non-added dims) */
+        for (int i = 0; i < self->ndims; i++) {
+                if (self->shape[i] == 1)
+                        grad = mt_tensor_sum(grad, i, 1);
+        }
+        return grad;
+}
 MTTensor *mt_tensor_add(MTTensor *a, MTTensor *b) {
-        return tensor_bfunc(a, b, __add);
+        MTTensor *res = tensor_bfunc(a, b, __add);
+        if (a->req_grad || b->req_grad) {
+                mt_tensor_enable_grad(res);
+                res->deps[0]          = a;
+                res->deps[1]          = b;
+                res->deps[0]->grad_fn = __add_backward_a;
+                res->deps[1]->grad_fn = __add_backward_b;
+        }
+        return res;
 }
 
 /* subtraction operation */

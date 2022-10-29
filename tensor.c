@@ -73,7 +73,6 @@ void __free_indices(MTTensor *t) {
 
 inline void __init_indices(MTTensor *t) {
         if (t->indices != NULL) __free_indices(t);
-        // if (t->ndims == 0) return;
 
         t->indices = mt_newptr(int *, t->ndims);
         for (int i = 0; i < t->ndims; i++) {
@@ -261,7 +260,10 @@ void mt_tensor_free(MTTensor *t) {
                 if (idxtracker > -1) t->context->tracked[idxtracker] = NULL;
 
                 for (int i = 0; i < t->ndeps; i++)
-                        if (t->deps[i] != NULL) mt_tensor_free(t->deps[i]);
+                        if (t->deps[i] != NULL) {
+                                mt_tensor_free(t->deps[i]);
+                                t->deps[i] = NULL;
+                        }
 
                 free(t->deps);
                 free(t->data);
@@ -288,7 +290,10 @@ void mt_context_defrag(MTContext *ctx) {
 
 void mt_free(MTContext *ctx) {
         for (int i = 0; i < ctx->ntracked; i++) {
-                if (ctx->tracked[i] != NULL) mt_tensor_free(ctx->tracked[i]);
+                if (ctx->tracked[i] != NULL) {
+                        mt_tensor_free(ctx->tracked[i]);
+                        ctx->tracked[i] = NULL;
+                }
         }
         free(ctx->tracked);
         free(ctx);
@@ -337,6 +342,7 @@ void mt_tensor_backward(MTTensor *t, MTTensor *grad) {
         t->grad = mt_tensor_add(t->grad, grad);
 
         for (int i = 0; i < t->ndeps; i++) {
+                if (t->deps[i]->grad_fn == NULL) EXIT_WITH_ERROR("fatal: no grad_fn defined");
                 MTTensor *bwgrad = t->deps[i]->grad_fn(t->deps, grad);
                 mt_tensor_backward(t->deps[i], bwgrad);
         }

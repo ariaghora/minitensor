@@ -22,6 +22,7 @@ void run_tests(void) {
         run_simple_autograd_tests(&t);
         run_autograd_backward_tests(&t);
         run_tensor_reduce_tests(&t);
+        run_autograd_add_tests(&t);
 #endif
 
         printf("========================================================================\n");

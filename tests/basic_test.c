@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "../minitensor.h"
 #include "test.h"
@@ -94,6 +95,47 @@ void run_context_tests(Test *t) {
         MTTensor *loss = mt_tensor_sub(mt_tensor_mul(w, x), y);
         mt_assert_true(t, x->isleaf, "test if x is a leaf", "x should be a leaf");
         mt_assert_true(t, !loss->isleaf, "test if binop result not a leaf", "result of binop should not be a leaf");
+
+        mt_free(ctx);
+}
+
+void run_broadcast_tests(Test *t) {
+        MTContext *ctx = mt_new_context();
+
+        MTTensor   *x     = mt_new_tensor(ctx, Arr(float, 1, 2, 3, 4), Arr(int, 2, 2), 2);
+        MTTensor   *y     = mt_new_tensor(ctx, Arr(float, 1, 2), Arr(int, 2), 1);
+        MTTensor   *sc    = mt_new_scalar(ctx, 1);
+        BcastResult bcres = mt_broadcast_lr(x, x);
+        mt_assert_true(t, bcres.status == BC_STATUS_NO_BCAST_REQUIRED, "test if no broadcast required", "no broadcast should be required");
+
+        bcres = mt_broadcast_lr(x, sc);
+        mt_assert_true(t, bcres.status == BC_STATUS_SKIP_SCALAR_HANDLING, "test if no broadcast required due to scalar", "no broadcast should be required");
+
+        bcres = mt_broadcast_lr(x, y);
+        mt_assert_true(t, bcres.status == BC_STATUS_SUCCESS, "test if broadcast is successful", "should be successful");
+        mt_assert_true(t, bcres.right != NULL, "right tensor of bcastresult must be not null", "must not null");
+        mt_assert_true(t, bcres.left == NULL, "left tensor of bcastresult must be null", "must be null");
+
+        mt_free(ctx);
+}
+
+void run_get_data_by_constrain(Test *t) {
+        MTContext *ctx = mt_new_context();
+
+        /* dummy tensors just to create indices easily -- we just use the inidces, nothing else */
+        MTTensor *two_by_two   = mt_new_tensor(ctx, Arr(float, 1, 1, 1, 1), Arr(int, 2, 2), 2);
+        MTTensor *two_by_three = mt_new_tensor(ctx, Arr(float, 1, 1, 1, 1, 1, 1), Arr(int, 2, 3), 2);
+
+        /* "duplicate" row */
+        MTTensor *x   = mt_new_tensor(ctx, Arr(float, 1, 2), Arr(int, 2), 1);
+        float    *arr = mt_tensor_get_all_data_constrained(x, two_by_two->indices, Arr(int, 2, 2), Arr(int, 0, 1), 2);
+        mt_assert_true(t, mt_arrsame(arr, Arr(float, 1, 2, 1, 2), 4), "test get data by constrain, 1 to 2 dims", "should be {1, 2, 1, 2}");
+        free(arr);
+
+        MTTensor *y = mt_new_tensor(ctx, Arr(float, 1, 2, 3, 4, 5, 6), Arr(int, 3, 2), 2);
+        arr         = mt_tensor_get_all_data_constrained(y, two_by_three->indices, Arr(int, 2, 3), Arr(int, 1, 2), 2);
+        mt_assert_true(t, mt_arrsame(arr, Arr(float, 1, 3, 5, 2, 4, 6), 6), "test transpose with stride manipulation", "should be {1, 3, 5, 2, 4, 6}");
+        free(arr);
 
         mt_free(ctx);
 }

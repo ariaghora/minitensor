@@ -4,6 +4,19 @@
 
 #include "minitensor.h"
 
+/*****************************************************************************
+ *
+ *     Below this cat onward is the implementation section of minitensor
+ *
+ *                            |\---/|
+ *                            | ,_, | MROW~
+ *                             \_`_/-..----.
+ *                          ___/ `   ' ,""+ \
+ *                         (__...'   __\    |`.___.';
+ *                           (_,...'(_,.`__)/'.....+
+ *
+ ****************************************************************************/
+
 #define INITIAL_CAP 8
 #define INITIAL_N_DEPS 4
 
@@ -17,13 +30,16 @@
         __found;                                     \
 })
 
-#define __printarr(arr, len, format) ({          \
-        printf("{");                             \
-        for (int __i = 0; __i < len; __i++) {    \
-                printf(format, arr[__i]);        \
-                if (__i < len - 1) printf(", "); \
-        }                                        \
-        printf("}");                             \
+#define __max(a, b) (a > b ? a : b)
+#define __min(a, b) (a < b ? a : b)
+
+#define __printarr(arr, len, format) ({                  \
+        printf("{");                                     \
+        for (int __i = 0; __i < len; __i++) {            \
+                printf(format, arr[__i]);                \
+                printf("%s", __i < len - 1 ? ", " : ""); \
+        }                                                \
+        printf("}");                                     \
 })
 
 #define __prod(arr, len, T) ({        \
@@ -233,7 +249,158 @@ MTTensor *mt_tensor_slice(MTContext *ctx, MTTensor *t, int dim,
         return newtensor;
 }
 
-void mt_squeeze_aspects_at_dim(int targetdim, int *shape, int *strides, int **indices, int ndims) {
+/**
+ * Access the tensor data with customized indices, shape, strides, and ndims
+ * constraints. This is useful for especially to access data of a tensor
+ * without necessarily obeying contiguous order. For example, we can pass
+ * swapped shape and swapped strides of a tensor into this function (and fix
+ * the other variables) to get the tensor data in a transposed order.
+ */
+float *mt_tensor_get_all_data_constrained(MTTensor *t, int **indices,
+                                          int *shape, int *strides, int ndims) {
+        /* Temporarily alter the tensor's properties */
+        int **oldindices = t->indices;
+        int  *oldshape   = t->shape;
+        int  *oldstrides = t->strides;
+        int   oldndims   = t->ndims;
+
+        t->indices = indices;
+        t->shape   = shape;
+        t->strides = strides;
+        t->ndims   = ndims;
+
+        IdxIterator *it     = mt_new_idxiterator(indices, shape, ndims);
+        int          outlen = __prod(shape, ndims, int);
+        float       *res    = mt_newptr(float, outlen);
+        for (int i = 0; i < outlen; i++) {
+                int *nextidx = mt_idxiterator_next(it);
+                res[i]       = mt_tensor_get(t, nextidx, ndims);
+        }
+
+        mt_idxiterator_free(it);
+
+        /* Restore the tensor's properties */
+        t->indices = oldindices;
+        t->shape   = oldshape;
+        t->strides = oldstrides;
+        t->ndims   = oldndims;
+        return res;
+}
+
+int *__range(int start, int end) {
+        int *r = mt_newptr(int, end - start);
+        for (int i = (start); i < (end); i++)
+                r[i] = i;
+        return r;
+}
+
+BcastResult mt_broadcast_lr(MTTensor *left, MTTensor *right) {
+        BcastResult res = {.left = NULL, .right = NULL, .status = BC_STATUS_FAILURE};
+
+        /**
+         * Return early (with both left and right Bcast result NULL) if both
+         * tensors have the same shape OR if one of them is a scalar.
+         */
+        if (left->ndims == 0 || right->ndims == 0) {
+                res.status = BC_STATUS_SKIP_SCALAR_HANDLING;
+                return res;
+        }
+        if (left->ndims == right->ndims)
+                if (mt_arrsame(left->shape, right->shape, left->ndims)) {
+                        res.status = BC_STATUS_NO_BCAST_REQUIRED;
+                        return res;
+                }
+
+        /**
+         * We are going to build target left and right shapes. If either of
+         * the tensors has less dims, prepend the shape array until both have
+         * the same number of dimensions.
+         */
+        int   outndims = __max(left->ndims, right->ndims);
+        int   lnewshape[outndims], ltmpstrides[outndims];
+        int   rnewshape[outndims], rtmpstrides[outndims];
+        int **lnewindices = mt_newptr(int *, outndims);
+        int **rnewindices = mt_newptr(int *, outndims);
+        int   lddiff      = abs(outndims - left->ndims);
+        int   rddiff      = abs(outndims - right->ndims);
+
+        // int *singletonidx = mt_newptr(int, 1);
+        // singletonidx[0] = 0;
+        for (int i = 0; i < outndims; i++) {
+                lnewshape[i]   = i < lddiff ? 1 : left->shape[i - lddiff];
+                ltmpstrides[i] = i < lddiff ? 0 : left->strides[i - lddiff];
+                rnewshape[i]   = i < rddiff ? 1 : right->shape[i - rddiff];
+                rtmpstrides[i] = i < rddiff ? 0 : right->strides[i - rddiff];
+
+                if (lnewshape[i] != rnewshape[i]) {
+                        if (lnewshape[i] == 1 || rnewshape[i] == 1) {
+                                lnewshape[i] = __max(lnewshape[i], rnewshape[i]);
+                                rnewshape[i] = __max(lnewshape[i], rnewshape[i]);
+                        } else {
+                                res.status = BC_STATUS_FAILURE;
+                                return res;
+                        }
+                }
+
+                lnewindices[i] = __range(0, lnewshape[i]);
+                rnewindices[i] = __range(0, rnewshape[i]);
+        }
+
+        /**
+         * Determine whether we should allocate new tensor if left/right
+         * is broadcast.
+         * when lnewshape == left->shape, then res.left should be NULL,
+         * and no new tensor allocation is required. The same applies on right
+         * side.
+         */
+
+        int lshouldbc = 0;
+        lshouldbc     = outndims != left->ndims;
+        if (!lshouldbc && (left->ndims == outndims))
+                if (!mt_arrsame(lnewshape, left->shape, left->ndims))
+                        lshouldbc = 1;
+
+        int rshouldbc = 0;
+        rshouldbc     = outndims != right->ndims;
+        if (!rshouldbc && (right->ndims == outndims))
+                if (!mt_arrsame(rnewshape, right->shape, right->ndims))
+                        rshouldbc = 1;
+
+        /* ... */
+
+        float *ldata = NULL;
+        if (lshouldbc) {
+                ldata    = mt_tensor_get_all_data_constrained(left,
+                                                              lnewindices,
+                                                              lnewshape,
+                                                              ltmpstrides,
+                                                              outndims);
+                res.left = mt_new_tensor(left->context, ldata,
+                                         lnewshape, outndims);
+        }
+
+        float *rdata = NULL;
+        if (rshouldbc) {
+                rdata     = mt_tensor_get_all_data_constrained(right,
+                                                               rnewindices,
+                                                               rnewshape,
+                                                               rtmpstrides,
+                                                               outndims);
+                res.right = mt_new_tensor(right->context, rdata,
+                                          rnewshape, outndims);
+        }
+
+        free(ldata), free(rdata);
+        for (int i = 0; i < outndims; i++) {
+                free(lnewindices[i]), free(rnewindices[i]);
+        }
+        free(lnewindices), free(rnewindices);
+
+        res.status = BC_STATUS_SUCCESS;
+        return res;
+}
+
+void mt_squeeze_at_dim(int targetdim, int *shape, int *strides, int **indices, int ndims) {
         if (shape[targetdim] != 1) return;
         free(indices[targetdim]);
         for (int i = targetdim; i < ndims - 1; i++) {

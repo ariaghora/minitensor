@@ -151,8 +151,8 @@ MTTensor *mt_tensor_reduce(MTTensor *t, int dim, TensorBFunc bfunc, int keepdims
                 mt_tensor_free(sl);
         }
         if (!keepdims) {
-                mt_squeeze_aspects_at_dim(dim, res->shape, res->strides,
-                                          res->indices, res->ndims);
+                mt_squeeze_at_dim(dim, res->shape, res->strides,
+                                  res->indices, res->ndims);
                 res->ndims--;
         }
         mt_context_defrag(t->context);

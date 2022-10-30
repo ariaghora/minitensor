@@ -56,24 +56,57 @@ struct MTContext {
         MtDevice device;
 };
 
+/**
+ * A tensor (less rigid definition from mathematical sense) is a container data
+ * structure with any arbitrary dimensions. We can say that tensor is the
+ * the generalization of scalar (0-dimensinal), vector (1-dimensional) and
+ * matrix (2-dimensional).
+ *
+ * Minitensor tensors operate in row-major. The data is arranged linearly con-
+ * tiguous in the memory. Minitensor includes reverse-mode autograd engine
+ * which requires the construction of computational graph. A tensor also serves
+ * as a node in a computational graph, that has references to its dependents
+ * and a reference to its parent.
+ */
 struct MTTensor {
-        float             *data;
-        long               datalen;
-        int              **indices;
-        int                isleaf;
-        int                ndeps;
-        int                ndims;
-        int                req_grad;
-        int               *shape;
-        int               *strides;
-        MTContext         *context;
-        MTTensor         **deps;
-        MTTensor          *grad;
-        MTTensor          *parent;
+        /* where the actual numerical data is stored */
+        float *data;
+        /* Describing the number of elements in `data` */
+        long datalen;
+        /* Stores multidimensional indices for tensors. If a tensor has 2
+         * dimensions, then there will be 2 integer arrays, each array has
+         * values from 0, 1, ... until the shape of that dimension minus one. */
+        int **indices;
+        /* Indicating that this tensor is a leaf (1) or not (0). */
+        int isleaf;
+        /* Keeps track the number of dependent tensors (when gradient is requ-
+         * ired)*/
+        int ndeps;
+        /* Number of tensor dimensions */
+        int ndims;
+        /* Indicating whether this tensor requires gradient computation (1) or
+         * not (0). */
+        int req_grad;
+        /* Tracks the shape of a tensor, or the number of elements of every di-
+         * mension. */
+        int *shape;
+        /* The stride, an array with length of `ndims`, each element describing
+         * how much "jumps" need to be made to move into the next dimension. */
+        int *strides;
+        /* The reference to a context */
+        MTContext *context;
+        /* A list of tensors dependent on this tensor (in computational graph).
+         */
+        MTTensor **deps;
+        MTTensor  *grad;
+        MTTensor  *parent;
+        /* Function to compute gradient during backward mode autograd*/
         TensorBackwardFunc grad_fn;
 };
 
-/* MTTensor main API */
+/**
+ *  MTTensor main API
+ */
 MTTensor  *mt_alloc_empty_tensor(MTContext *ctx);
 MTTensor  *mt_new_tensor(MTContext *context, float *data,
                          int *shape, int ndim);
@@ -107,10 +140,50 @@ void       mt_tensor_zero_grad(MTTensor *t);
 int        mt_is_tensor_eq(MTTensor *a, MTTensor *b);
 void       mt_tensor_print_debug(MTTensor *t);
 
-/* Internal API */
-void mt_squeeze_aspects_at_dim(int targetdim, int *shape, int *strides,
-                               int **indices, int ndims);
+/**
+ * Internal API
+ */
+typedef enum { BC_STATUS_NO_BCAST_REQUIRED,
+               BC_STATUS_SKIP_SCALAR_HANDLING,
+               BC_STATUS_SUCCESS,
+               BC_STATUS_FAILURE } BcastStatus;
+typedef struct BcastResult BcastResult;
+struct BcastResult {
+        MTTensor   *left;
+        MTTensor   *right;
+        BcastStatus status;
+};
+
+/**
+ * Broadcast a tensor into one-another's shape. The result struct's left and
+ * right attributes will be NULL if there is no broadcasting required or if
+ * either left or right is a scalar.
+ */
+BcastResult mt_broadcast_lr(MTTensor *left, MTTensor *right);
+
+/**
+ * remove `targetdim` dimension if it is a singleton dimension. Otherwise,
+ * the program will close with error. The shape output determination depends on
+ * strides and indices arrays (as arguments). This function modifies shape,
+ * strides, and indices arguments.
+ */
+void mt_squeeze_at_dim(int targetdim, int *shape, int *strides,
+                       int **indices, int ndims);
+
+/**
+ * Remove NULL elements in the tracked atteribute of ctx and reallocate accordingly
+ */
 void mt_context_defrag(MTContext *ctx);
+
+/**
+ * Access the tensor data with customized indices, shape, strides, and ndims
+ * constraints. This is useful for especially to access data of a tensor
+ * without necessarily obeying contiguous order. For example, we can pass
+ * swapped shape and swapped strides of a tensor into this function (and fix
+ * the other variables) to get the tensor data in a transposed order.
+ */
+float *mt_tensor_get_all_data_constrained(MTTensor *t, int **indices,
+                                          int *shape, int *strides, int ndims);
 
 /* helper macros */
 #define mt_newptr(type, len) ((type *)calloc((len), sizeof(type)))

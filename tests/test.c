@@ -10,6 +10,8 @@ void run_tests(void) {
         run_tensor_slice_tests(&t);
         run_tensor_access_tests(&t);
         run_context_tests(&t);
+        run_broadcast_tests(&t);
+        run_get_data_by_constrain(&t);
 #endif
 
 #ifndef SKIP_MATH_TESTS

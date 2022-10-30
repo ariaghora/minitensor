@@ -19,6 +19,8 @@ void run_tensor_creation_tests(Test *);
 void run_tensor_slice_tests(Test *);
 void run_tensor_access_tests(Test *);
 void run_context_tests(Test *);
+void run_broadcast_tests(Test *t);
+void run_get_data_by_constrain(Test *t);
 
 /* testing math functionality **/
 void run_tensor_addition_tests(Test *);

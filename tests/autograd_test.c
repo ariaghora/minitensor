@@ -73,3 +73,17 @@ void run_autograd_add_tests(Test *t) {
 
         mt_free(ctx);
 }
+
+void run_autograd_add_same_tensors_tests(Test *t) {
+        MTContext *ctx = mt_new_context();
+        MTTensor  *x   = mt_new_tensor(ctx, Arr(float, 1, 2, 3), Arr(int, 3), 1);
+        mt_tensor_enable_grad(x);
+        MTTensor *res = mt_tensor_add(x, x);
+        mt_tensor_backward(res, mt_new_tensor(ctx, Arr(float, 2, 2, 2), Arr(int, 3), 1));
+        mt_assert_true(t, mt_is_tensor_eq(res, mt_new_tensor(ctx, Arr(float, 2, 4, 6), Arr(int, 3), 1)), "test simple addition on same tensors requiring grad", "should be {2, 4, 6}");
+        mt_assert_true(t, mt_is_tensor_eq(x->grad, mt_new_tensor(ctx, Arr(float, 4, 4, 4), Arr(int, 3), 1)), "test simple grad of addition on same tensors", "should be {4, 4, 4}");
+        res = mt_tensor_add(res, x);
+        mt_tensor_backward(res, mt_new_tensor(ctx, Arr(float, 2, 2, 2), Arr(int, 3), 1));
+        mt_assert_true(t, mt_is_tensor_eq(x->grad, mt_new_tensor(ctx, Arr(float, 10, 10, 10), Arr(int, 3), 1)), "test simple grad of addition on same tensors once more", "should be {10,10,10}");
+        mt_free(ctx);
+}

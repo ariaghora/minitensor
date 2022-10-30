@@ -23,6 +23,7 @@ void run_tests(void) {
         run_autograd_backward_tests(&t);
         run_tensor_reduce_tests(&t);
         run_autograd_add_tests(&t);
+        run_autograd_add_same_tensors_tests(&t);
 #endif
 
         printf("========================================================================\n");

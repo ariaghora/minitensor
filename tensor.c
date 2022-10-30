@@ -259,11 +259,17 @@ void mt_tensor_free(MTTensor *t) {
                                                 t->context->ntracked);
                 if (idxtracker > -1) t->context->tracked[idxtracker] = NULL;
 
-                for (int i = 0; i < t->ndeps; i++)
-                        if (t->deps[i] != NULL) {
-                                mt_tensor_free(t->deps[i]);
-                                t->deps[i] = NULL;
-                        }
+                /**
+                 * TODO:
+                 * The logic for freeing this tensor's dependencies needs to be
+                 * improved. At this point we disable it and let the contexts
+                 * do the freeing in end
+                 */
+                // for (int i = 0; i < t->ndeps; i++)
+                //         if (t->deps[i] != NULL) {
+                //                 mt_tensor_free(t->deps[i]);
+                //                 t->deps[i] = NULL;
+                //         }
 
                 free(t->deps);
                 free(t->data);

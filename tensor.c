@@ -168,6 +168,13 @@ MTTensor *mt_new_scalar(MTContext *context, float val) {
         return mt_new_tensor(context, sc, NULL, 0);
 }
 
+/**
+ * IdxIterator helps the iteration through multidimensional indices of
+ * a tensor. For example, a tensor with shape 3 by 3 has indices of {0, 0},
+ * {0, 1}, {0, 2}, {1, 0}, ..., {2, 2}. IdxIterator can generate next
+ * subsequent index efficiently without storing all possible permutations of
+ * indices to begin with.
+ */
 typedef struct {
         int **indices;
         int  *nextidx;
@@ -178,6 +185,10 @@ typedef struct {
         int   i;
 } IdxIterator;
 
+/**
+ * Allocate a new IdxIterator. Each element of `indices` is an integer array
+ * containing index we want to iterate through, from each dimension.
+ */
 IdxIterator *mt_new_idxiterator(int **indices, int *shape, int ndims) {
         IdxIterator *it = mt_newptr(IdxIterator, 1);
         it->ndims       = ndims;
@@ -195,12 +206,11 @@ IdxIterator *mt_new_idxiterator(int **indices, int *shape, int ndims) {
         return it;
 }
 
-// get the next multidimensional index from the iterator
+/* Get the next (subsequent) multidimensional index from an IdxIterator */
 int *mt_idxiterator_next(IdxIterator *it) {
         if (it->i++ < 0) return it->nextactidx;
 
         it->nxt = it->ndims - 1;
-        // TODO: `if` instead of `while`?
         while (it->nxt >= 0 && (it->nextidx[it->nxt] + 1 >= it->shape[it->nxt]))
                 it->nxt--;
 
@@ -298,7 +308,7 @@ BcastResult mt_broadcast_lr(MTTensor *left, MTTensor *right) {
         BcastResult res = {.left = NULL, .right = NULL, .status = BC_STATUS_FAILURE};
 
         /**
-         * Return early (with both left and right Bcast result NULL) if both
+         * Return early (with both left and right BcastResult NULL) if both
          * tensors have the same shape OR if one of them is a scalar.
          */
         if (left->ndims == 0 || right->ndims == 0) {
@@ -324,8 +334,6 @@ BcastResult mt_broadcast_lr(MTTensor *left, MTTensor *right) {
         int   lddiff      = abs(outndims - left->ndims);
         int   rddiff      = abs(outndims - right->ndims);
 
-        // int *singletonidx = mt_newptr(int, 1);
-        // singletonidx[0] = 0;
         for (int i = 0; i < outndims; i++) {
                 lnewshape[i]   = i < lddiff ? 1 : left->shape[i - lddiff];
                 ltmpstrides[i] = i < lddiff ? 0 : left->strides[i - lddiff];
@@ -447,7 +455,7 @@ void mt_tensor_free(MTTensor *t) {
         free(t);
 }
 
-// remove NULLs in the tracked list
+/* remove NULLs in the tracked list */
 void mt_context_defrag(MTContext *ctx) {
         MTTensor **newtracked = mt_newptr(MTTensor *, ctx->ntracked);
 

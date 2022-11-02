@@ -111,10 +111,31 @@ void run_broadcast_tests(Test *t) {
         bcres = mt_broadcast_lr(x, sc);
         mt_assert_true(t, bcres.status == BC_STATUS_SKIP_SCALAR_HANDLING, "test if no broadcast required due to scalar", "no broadcast should be required");
 
+        /* Test right "smaller" tensor */
         bcres = mt_broadcast_lr(x, y);
         mt_assert_true(t, bcres.status == BC_STATUS_SUCCESS, "test if broadcast is successful", "should be successful");
         mt_assert_true(t, bcres.right != NULL, "right tensor of bcastresult must be not null", "must not null");
         mt_assert_true(t, bcres.left == NULL, "left tensor of bcastresult must be null", "must be null");
+
+        /* Test left "smaller" tensor */
+        bcres = mt_broadcast_lr(y, x);
+        mt_assert_true(t, bcres.status == BC_STATUS_SUCCESS, "test if broadcast is successful", "should be successful");
+        mt_assert_true(t, bcres.left != NULL, "left tensor of bcastresult must be not null", "must not null");
+        mt_assert_true(t, bcres.right == NULL, "right tensor of bcastresult must be null", "must be null");
+
+        /* Test when left & right has the same dimension */
+        bcres = mt_broadcast_lr(x, x);
+        mt_assert_true(t, bcres.status == BC_STATUS_NO_BCAST_REQUIRED, "test if no broadcast is required for same-sized tensors", "no broadcast should be required");
+        mt_assert_true(t, bcres.left == NULL, "left tensor of bcastresult must be null", "must be null");
+        mt_assert_true(t, bcres.right == NULL, "right tensor of bcastresult must be null", "must be null");
+
+        /* Test broadcasting in higher dimension */
+        x              = mt_new_tensor(ctx, Arr(float, 1, 2, 3, 4, 5, 6), Arr(int, 3, 1, 2), 3);
+        y              = mt_new_tensor(ctx, Arr(float, 1, 2), Arr(int, 1, 2), 2);
+        MTTensor *yres = mt_new_tensor(ctx, Arr(float, 1, 2, 1, 2, 1, 2), Arr(int, 3, 1, 2), 3);
+        bcres          = mt_broadcast_lr(x, y);
+        mt_assert_true(t, bcres.status == BC_STATUS_SUCCESS, "test if broadcast is successful", "should be successful");
+        mt_assert_true(t, mt_is_tensor_eq(bcres.right, yres), "test if broadcast is successful in 3-d", "y should be equals to yres");
 
         mt_free(ctx);
 }

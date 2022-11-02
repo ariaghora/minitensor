@@ -4,7 +4,7 @@
 
 #include "minitensor.h"
 
-#define mt_push_deps(t, dep) ({    \
+#define __mt_push_deps(t, dep) ({  \
         dep->parent         = t;   \
         t->deps[t->ndeps++] = dep; \
 })
@@ -16,9 +16,6 @@
  */
 MTTensor *mt_tensor_reduce(MTTensor *t, int dim, TensorBFunc bfunc,
                            int keepdims) {
-        if (t->shape[dim] <= 1)
-                EXIT_WITH_ERROR("cannot reduce at index with size <= 1");
-
         MTTensor *res = mt_tensor_slice(t->context, t, dim, Arr(int, 0), 1);
         for (long i = 1; i < t->shape[dim]; i++) {
                 MTTensor *sl  = mt_tensor_slice(t->context, t,
@@ -33,6 +30,9 @@ MTTensor *mt_tensor_reduce(MTTensor *t, int dim, TensorBFunc bfunc,
                                   res->indices, res->ndims);
                 res->ndims--;
         }
+
+        /* There will be possibly many allocations (and deallocations) inside
+         * above loop, so we might better defrag the context here. */
         mt_context_defrag(t->context);
 
         return res;
@@ -91,8 +91,8 @@ MTTensor *tensor_bfunc(MTTensor *a, MTTensor *b, BFunc bfunc) {
 
         if (a->req_grad || b->req_grad) {
                 res->req_grad = 1;
-                mt_push_deps(res, a);
-                mt_push_deps(res, b);
+                __mt_push_deps(res, a);
+                __mt_push_deps(res, b);
         }
 
         free(resdata);
@@ -192,7 +192,7 @@ MTTensor *mt_tensor_sum(MTTensor *t, int dim, int keepdim) {
         if (t->req_grad) {
                 mt_tensor_enable_grad(res);
                 t->grad_fn = __sum_backward;
-                mt_push_deps(res, t);
+                __mt_push_deps(res, t);
         }
         return res;
 }

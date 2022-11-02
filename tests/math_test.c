@@ -24,6 +24,14 @@ void run_tensor_addition_tests(Test *t) {
         mt_assert_true(t, mt_is_tensor_eq(result3, expected3), "test tensor-scalar addition", "tensor-scalar addition result is wrog");
         mt_assert_true(t, mt_is_tensor_eq(mt_tensor_add(sc1, sc2), mt_new_scalar(ctx, 5)), "test scalar-scalar addition", "scalar-scalar addition result is wrog");
 
+        MTTensor *big   = mt_new_tensor(ctx, Arr(float, 1, 2, 3, 4), Arr(int, 2, 2), 2);
+        MTTensor *small = mt_new_tensor(ctx, Arr(float, 2, 2, 2, 2), Arr(int, 2), 1);
+        mt_assert_true(t,
+                       mt_is_tensor_eq(
+                           mt_tensor_add(big, small),
+                           mt_new_tensor(ctx, Arr(float, 3, 4, 5, 6), Arr(int, 2, 2), 2)),
+                       "test tensor-tensor addition with broadcasting",
+                       "should be {3, 4, 5, 6}");
         mt_free(ctx);
 }
 
@@ -66,6 +74,14 @@ void run_tensor_subtraction_tests(Test *t) {
         mt_assert_true(t, mt_is_tensor_eq(expected1, result1), "simple subtraction 1 is correct", "subtraction result should be all-zeros");
         mt_assert_true(t, mt_is_tensor_eq(expected2, result2), "simple subtraction 2 is correct", "subtraction result should be x original values: 1, 2, 3, 4");
 
+        MTTensor *big   = mt_new_tensor(ctx, Arr(float, 1, 2, 3, 4), Arr(int, 2, 2), 2);
+        MTTensor *small = mt_new_tensor(ctx, Arr(float, 2, 2, 2, 2), Arr(int, 2), 1);
+        mt_assert_true(t,
+                       mt_is_tensor_eq(
+                           mt_tensor_sub(big, small),
+                           mt_new_tensor(ctx, Arr(float, -1, 0, 1, 2), Arr(int, 2, 2), 2)),
+                       "test tensor-tensor subtraction with broadcasting",
+                       "should be {-1, 0, 1, 2}");
         mt_free(ctx);
 }
 

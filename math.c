@@ -114,36 +114,29 @@ MTTensor *tensor_bfunc(MTTensor *a, MTTensor *b, BFunc bfunc) {
 
 #define __set_grad_fn(t, fn) ({ t->grad_fn = t->req_grad ? fn : NULL; })
 
+MTTensor *mt_grad_unbroadcast(MTTensor *grad, MTTensor *wrt_tensor) {
+        /* sum out added dims */
+        int ndims_added = grad->ndims - wrt_tensor->ndims;
+        for (int i = 0; i < ndims_added; i++)
+                grad = mt_tensor_sum(grad, 0, 0);
+        /* sum across broadcasted (but non-added dims) */
+        for (int i = 0; i < wrt_tensor->ndims; i++) {
+                if (wrt_tensor->shape[i] == 1)
+                        grad = mt_tensor_sum(grad, i, 1);
+        }
+        return grad;
+}
+
 /* addition operation */
 float     __add(float a, float b) { return a + b; }
 MTTensor *__add_backward_a(MTTensor **prtdeps, MTTensor *grad) {
-        MTTensor *self = prtdeps[0];
-        /* sum out added dims */
-        int ndims_added = grad->ndims - self->ndims;
-        for (int i = 0; i < ndims_added; i++)
-                grad = mt_tensor_sum(grad, 0, 0);
-        /* sum across broadcasted (but non-added dims) */
-        for (int i = 0; i < self->ndims; i++) {
-                if (self->shape[i] == 1)
-                        grad = mt_tensor_sum(grad, i, 1);
-        }
-        return grad;
+        MTTensor *a = prtdeps[0];
+        return mt_grad_unbroadcast(grad, a);
 }
-
 MTTensor *__add_backward_b(MTTensor **prtdeps, MTTensor *grad) {
-        MTTensor *self = prtdeps[1];
-        /* sum out added dims */
-        int ndims_added = grad->ndims - self->ndims;
-        for (int i = 0; i < ndims_added; i++)
-                grad = mt_tensor_sum(grad, 0, 0);
-        /* sum across broadcasted (but non-added dims) */
-        for (int i = 0; i < self->ndims; i++) {
-                if (self->shape[i] == 1)
-                        grad = mt_tensor_sum(grad, i, 1);
-        }
-        return grad;
+        MTTensor *b = prtdeps[1];
+        return mt_grad_unbroadcast(grad, b);
 }
-
 MTTensor *mt_tensor_add(MTTensor *a, MTTensor *b) {
         MTTensor *res = tensor_bfunc(a, b, __add);
         if (a->req_grad || b->req_grad) mt_tensor_enable_grad(res);

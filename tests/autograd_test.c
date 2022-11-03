@@ -35,8 +35,9 @@ void run_simple_autograd_tests(Test *t) {
 
 void run_autograd_backward_tests(Test *t) {
         MTContext *ctx = mt_new_context();
-        MTTensor  *x   = mt_new_tensor(ctx, Arr(float, 1, 2, 3), Arr(int, 3, 1), 2);
-        MTTensor  *y   = mt_new_tensor(ctx, Arr(float, 1, 2, 3), Arr(int, 3, 1), 2);
+
+        MTTensor *x = mt_new_tensor(ctx, Arr(float, 1, 2, 3), Arr(int, 3, 1), 2);
+        MTTensor *y = mt_new_tensor(ctx, Arr(float, 1, 2, 3), Arr(int, 3, 1), 2);
         mt_tensor_enable_grad(x);
         mt_tensor_enable_grad(y);
 
@@ -58,8 +59,14 @@ void run_autograd_backward_tests(Test *t) {
 
 void run_autograd_add_tests(Test *t) {
         MTContext *ctx = mt_new_context();
-        MTTensor  *x   = mt_new_tensor(ctx, Arr(float, 1, 2, 3), Arr(int, 3), 1);
-        MTTensor  *y   = mt_new_tensor(ctx, Arr(float, 4, 5, 6), Arr(int, 3), 1);
+        /* test backward when one of operand does not require grad */
+        MTTensor *a = mt_new_scalar(ctx, 1);
+        MTTensor *b = mt_new_scalar(ctx, 1);
+        mt_tensor_enable_grad(a);
+        mt_tensor_backward(mt_tensor_add(a, b), NULL);
+
+        MTTensor *x = mt_new_tensor(ctx, Arr(float, 1, 2, 3), Arr(int, 3), 1);
+        MTTensor *y = mt_new_tensor(ctx, Arr(float, 4, 5, 6), Arr(int, 3), 1);
         mt_tensor_enable_grad(x);
         mt_tensor_enable_grad(y);
 

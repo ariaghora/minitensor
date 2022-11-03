@@ -511,11 +511,14 @@ void mt_tensor_backward(MTTensor *t, MTTensor *grad) {
         }
         t->grad = mt_tensor_add(t->grad, grad);
 
+        /* recursively compute gradient of t's non-null children */
         for (int i = 0; i < t->ndeps; i++) {
-                if (t->deps[i]->grad_fn == NULL)
-                        EXIT_WITH_ERROR("fatal: no grad_fn defined");
-                MTTensor *bwgrad = t->deps[i]->grad_fn(t->deps, grad);
-                mt_tensor_backward(t->deps[i], bwgrad);
+                if (t->deps[i] != NULL) {
+                        if (t->deps[i]->grad_fn == NULL)
+                                EXIT_WITH_ERROR("fatal: no grad_fn defined");
+                        MTTensor *bwgrad = t->deps[i]->grad_fn(t->deps, grad);
+                        mt_tensor_backward(t->deps[i], bwgrad);
+                }
         }
 }
 
@@ -536,6 +539,10 @@ void mt_tensor_print_debug(MTTensor *t) {
 }
 
 int mt_is_tensor_eq(MTTensor *a, MTTensor *b) {
+        /* NULL guard */
+        if ((a == NULL) && (b != NULL)) return 0;
+        if ((a != NULL) && (b == NULL)) return 0;
+
         if (a->ndims != b->ndims) return 0;
         return mt_arrsame(a->data, b->data, a->datalen) &&
                mt_arrsame(a->shape, b->shape, a->ndims);

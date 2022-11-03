@@ -109,8 +109,8 @@ MTTensor *mt_new_tensor(MTContext *context,
         t->datalen  = datalen;
         t->ndims    = ndims;
         t->shape    = mt_newptr(int, ndims);
-        mt_memcpy(t->data, data, datalen);
-        mt_memcpy(t->shape, shape, ndims);
+        __mt_memcpy(t->data, data, datalen);
+        __mt_memcpy(t->shape, shape, ndims);
         __init_strides(t);
         __init_indices(t);
         return t;
@@ -458,7 +458,7 @@ void mt_context_defrag(MTContext *ctx) {
         ctx->tracked  = realloc(ctx->tracked, ctx->cap * sizeof(*ctx->tracked));
 }
 
-void mt_free(MTContext *ctx) {
+void mt_context_free(MTContext *ctx) {
         for (int i = 0; i < ctx->ntracked; i++) {
                 if (ctx->tracked[i] != NULL) {
                         mt_tensor_free(ctx->tracked[i]);

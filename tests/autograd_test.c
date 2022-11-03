@@ -30,7 +30,7 @@ void run_simple_autograd_tests(Test *t) {
         mt_assert_true(t, res->deps[0] == NULL, "test binop resulting lchild without grad", "res lchild should be NULL");
         mt_assert_true(t, res->deps[1] == NULL, "test binop resulting rchild without grad", "res rchild should be NULL");
 
-        mt_free(ctx);
+        mt_context_free(ctx);
 }
 
 void run_autograd_backward_tests(Test *t) {
@@ -54,7 +54,7 @@ void run_autograd_backward_tests(Test *t) {
         sum                = mt_tensor_sum(y, -1, 0);
         mt_tensor_backward(sum, mt_new_scalar(ctx, 3.0));
         mt_assert_true(t, mt_is_tensor_eq(y->grad, expgrad2), "test dependent grad value", "grad value should be all 3");
-        mt_free(ctx);
+        mt_context_free(ctx);
 }
 
 void run_autograd_add_tests(Test *t) {
@@ -121,7 +121,7 @@ void run_autograd_add_tests(Test *t) {
                            small->grad,
                            mt_new_tensor(ctx, Arr(float, 2, 2, 2), Arr(int, 1, 3), 2)),
                        "test A+B grad of smaller tensor (2)", "should be {{2, 2, 2}}}");
-        mt_free(ctx);
+        mt_context_free(ctx);
 }
 
 void run_autograd_add_same_tensors_tests(Test *t) {
@@ -135,5 +135,5 @@ void run_autograd_add_same_tensors_tests(Test *t) {
         res = mt_tensor_add(res, x);
         mt_tensor_backward(res, mt_new_tensor(ctx, Arr(float, 2, 2, 2), Arr(int, 3), 1));
         mt_assert_true(t, mt_is_tensor_eq(x->grad, mt_new_tensor(ctx, Arr(float, 10, 10, 10), Arr(int, 3), 1)), "test simple grad of addition on same tensors once more", "should be {10,10,10}");
-        mt_free(ctx);
+        mt_context_free(ctx);
 }

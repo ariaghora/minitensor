@@ -41,7 +41,7 @@ void run_tensor_addition_tests(Test *t) {
                            mt_new_tensor(ctx, Arr(float, 2, 4, 4, 6), Arr(int, 2, 2), 2)),
                        "test tensor-tensor addition with broadcasting (1)",
                        "should be {3, 4, 5, 6}");
-        mt_free(ctx);
+        mt_context_free(ctx);
 }
 
 void run_tensor_sum_tests(Test *t) {
@@ -67,7 +67,7 @@ void run_tensor_sum_tests(Test *t) {
         res6           = mt_tensor_sum(res6, 0, 0);
         mt_assert_true(t, mt_is_tensor_eq(res6, mt_new_scalar(ctx, 21)), "test sum dim 0 twice, without keeping dim", "must be {{ 21 }}");
 
-        mt_free(ctx);
+        mt_context_free(ctx);
 }
 
 void run_tensor_subtraction_tests(Test *t) {
@@ -91,7 +91,7 @@ void run_tensor_subtraction_tests(Test *t) {
                            mt_new_tensor(ctx, Arr(float, -1, 0, 1, 2), Arr(int, 2, 2), 2)),
                        "test tensor-tensor subtraction with broadcasting",
                        "should be {-1, 0, 1, 2}");
-        mt_free(ctx);
+        mt_context_free(ctx);
 }
 
 void run_tensor_negation_tests(Test *t) {
@@ -103,7 +103,7 @@ void run_tensor_negation_tests(Test *t) {
                            mt_new_tensor(ctx, Arr(float, -1, -2, -3, -4), Arr(int, 2, 2), 2)),
                        "test negation",
                        "should be {-1,-2,-3,-4}");
-        mt_free(ctx);
+        mt_context_free(ctx);
 }
 
 void run_tensor_reduce_tests(Test *t) {
@@ -117,5 +117,5 @@ void run_tensor_reduce_tests(Test *t) {
         mt_assert_true(t, mt_is_tensor_eq(xslice1, exp1), "test tensor reduce along axis 0", "the result should be {{9, 12}}");
         mt_assert_true(t, mt_is_tensor_eq(xslice2, exp2), "test tensor reduce along axis 1 with squeeze", "the result should be {3, 7, 11}");
 
-        mt_free(ctx);
+        mt_context_free(ctx);
 }

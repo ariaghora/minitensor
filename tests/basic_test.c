@@ -29,7 +29,7 @@ void run_tensor_creation_tests(Test *t) {
         mt_assert_true(t, x->strides[0] == 3, "test 1st stride of (3,3) tensor", "1st stride must be 3");
         mt_assert_true(t, x->strides[1] == 1, "test 2nd stride of (3,3) tensor", "2nd stride must be 1");
 
-        mt_free(ctx);
+        mt_context_free(ctx);
 }
 
 void run_tensor_access_tests(Test *t) {
@@ -46,7 +46,7 @@ void run_tensor_access_tests(Test *t) {
         mt_assert_true(t, mt_tensor_get_2(y, 1, 1) == 4, "test 2nd getval from 2-tensor", "the value should be 4");
         mt_assert_true(t, mt_tensor_get_3(z, 0, 1, 1) == 4, "test 1st getval from 3-tensor", "the value should be 4");
         mt_assert_true(t, mt_tensor_get_3(z, 1, 0, 1) == 6, "test 1st getval from 3-tensor", "the value should be 6");
-        mt_free(ctx);
+        mt_context_free(ctx);
 }
 
 void run_tensor_slice_tests(Test *t) {
@@ -67,7 +67,7 @@ void run_tensor_slice_tests(Test *t) {
         mt_assert_true(t, mt_is_tensor_eq(slice3, exp3), "test slice 3-tensor 1", "the value should be [1, 2, 5, 6]");
         mt_assert_true(t, mt_is_tensor_eq(slice4, exp4), "test slice 3-tensor 2", "the value should be [1, 2, 5, 6]");
 
-        mt_free(ctx);
+        mt_context_free(ctx);
 }
 
 void f(int *arr) {
@@ -96,7 +96,7 @@ void run_context_tests(Test *t) {
         mt_assert_true(t, x->isleaf, "test if x is a leaf", "x should be a leaf");
         mt_assert_true(t, !loss->isleaf, "test if binop result not a leaf", "result of binop should not be a leaf");
 
-        mt_free(ctx);
+        mt_context_free(ctx);
 }
 
 void run_broadcast_tests(Test *t) {
@@ -137,7 +137,7 @@ void run_broadcast_tests(Test *t) {
         mt_assert_true(t, bcres.status == BC_STATUS_SUCCESS, "test if broadcast is successful", "should be successful");
         mt_assert_true(t, mt_is_tensor_eq(bcres.right, yres), "test if broadcast is successful in 3-d", "y should be equals to yres");
 
-        mt_free(ctx);
+        mt_context_free(ctx);
 }
 
 void run_get_data_by_constrain(Test *t) {
@@ -158,5 +158,5 @@ void run_get_data_by_constrain(Test *t) {
         mt_assert_true(t, mt_arrsame(arr, Arr(float, 1, 3, 5, 2, 4, 6), 6), "test transpose with stride manipulation", "should be {1, 3, 5, 2, 4, 6}");
         free(arr);
 
-        mt_free(ctx);
+        mt_context_free(ctx);
 }

@@ -139,7 +139,7 @@ MTTensor  *mt_tensor_reduce(MTTensor *t, int dim, TensorBFunc bfunc,
                             int keepdims);
 MTContext *mt_new_context(void);
 void       mt_context_push_tensor(MTContext *ctx, MTTensor *t);
-void       mt_free(MTContext *ctx);
+void       mt_context_free(MTContext *ctx);
 void       mt_tensor_enable_grad(MTTensor *t);
 void       mt_tensor_disable_grad(MTTensor *t);
 void       mt_tensor_backward(MTTensor *t, MTTensor *grad);

@@ -19,6 +19,7 @@ void run_tests(void) {
         run_tensor_subtraction_tests(&t);
         run_tensor_negation_tests(&t);
         run_tensor_sum_tests(&t);
+        run_autograd_neg_tests(&t);
 #endif
 
 #ifndef SKIP_AUTOGRAD_TESTS

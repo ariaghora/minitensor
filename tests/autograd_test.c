@@ -137,3 +137,32 @@ void run_autograd_add_same_tensors_tests(Test *t) {
         mt_assert_true(t, mt_is_tensor_eq(x->grad, mt_new_tensor(ctx, Arr(float, 10, 10, 10), Arr(int, 3), 1)), "test simple grad of addition on same tensors once more", "should be {10,10,10}");
         mt_context_free(ctx);
 }
+
+void run_autograd_neg_tests(Test *t) {
+        MTContext *ctx = mt_new_context();
+        MTTensor  *x   = mt_new_tensor(ctx, Arr(float, 1, 2, 3), Arr(int, 3), 1);
+        mt_tensor_enable_grad(x);
+
+        MTTensor *res = mt_tensor_neg(x);
+
+        /* negation */
+        mt_tensor_backward(res, mt_new_tensor(ctx, Arr(float, 2, 2, 2), Arr(int, 3), 1));
+        mt_assert_true(
+            t,
+            mt_is_tensor_eq(x->grad, mt_new_tensor(ctx, Arr(float, -2, -2, -2), Arr(int, 3), 1)),
+            "test grad negation",
+            "should be {-2, -2, -2}");
+
+        /* sum of negation */
+        x = mt_new_tensor(ctx, Arr(float, 1, 2, 3), Arr(int, 3), 1);
+        mt_tensor_enable_grad(x);
+        res = mt_tensor_sum(mt_tensor_neg(x), -1, 0);
+        mt_tensor_backward(res, NULL);
+        mt_assert_true(
+            t,
+            mt_is_tensor_eq(x->grad, mt_new_tensor(ctx, Arr(float, -1, -1, -1), Arr(int, 3), 1)),
+            "test grad sum of negation",
+            "should be {-1, -1, -1}");
+
+        mt_context_free(ctx);
+}

@@ -193,9 +193,9 @@ float *mt_tensor_get_all_data_constrained(MTTensor *t, int **indices,
                                           int *shape, int *strides, int ndims);
 
 /* helper macros */
-#define mt_newptr(type, len) ((type *)calloc((len), sizeof(type)))
-#define mt_memcpy(to, from, len) (memcpy(to, from, (len) * sizeof(*from)))
-#define mt_arrsame(a, b, len) ({                                 \
+#define __mt_newptr(type, len) ((type *)calloc((len), sizeof(type)))
+#define __mt_memcpy(to, from, len) (memcpy(to, from, (len) * sizeof(*from)))
+#define __mt_arrsame(a, b, len) ({                               \
         int __mt_issame = 1;                                     \
         for (long i = 0; i < len; i++)                           \
                 __mt_issame = __mt_issame && ((a[i]) == (b[i])); \

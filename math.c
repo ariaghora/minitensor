@@ -68,7 +68,7 @@ MTTensor *mt_tensor_bfunc(MTTensor *a, MTTensor *b, BFunc bfunc) {
         a = bcr.left == NULL ? a : bcr.left;
         b = bcr.right == NULL ? b : bcr.right;
 
-        float *resdata = mt_newptr(
+        float *resdata = __mt_newptr(
             float,
             a->ndims > b->ndims ? a->datalen : b->datalen);
 
@@ -121,7 +121,7 @@ MTTensor *mt_tensor_bfunc(MTTensor *a, MTTensor *b, BFunc bfunc) {
  * rocation, exponentiation, etc.
  */
 MTTensor *mt_tensor_ufunc(MTTensor *t, UFunc ufunc) {
-        float *resdata = mt_newptr(float, t->datalen);
+        float *resdata = __mt_newptr(float, t->datalen);
         for (int i = 0; i < t->datalen; i++)
                 resdata[i] = ufunc(t->data[i]);
 
@@ -201,9 +201,14 @@ MTTensor    *mt_tensor_mul(MTTensor *a, MTTensor *b) {
 
 /* negation operation */
 inline float __neg(float x) { return -x; }
-MTTensor    *mt_tensor_neg(MTTensor *t) {
-           MTTensor *res = mt_tensor_ufunc(t, __neg);
-           return res;
+MTTensor    *__neg_backward(MTTensor **prtdeps, MTTensor *grad) {
+           return mt_tensor_neg(grad);
+}
+MTTensor *mt_tensor_neg(MTTensor *t) {
+        MTTensor *res = mt_tensor_ufunc(t, __neg);
+        if (t->req_grad) mt_tensor_enable_grad(res);
+        __mt_push_deps_at(res, t, 0, __neg_backward);
+        return res;
 }
 
 /* sum operation */

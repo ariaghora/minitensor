@@ -12,8 +12,8 @@ void run_tensor_creation_tests(Test *t) {
         mt_assert_true(t, x->datalen == 4, "test initial data length", "the data length should be 4");
         mt_assert_true(t, mt_is_tensor_eq(x, y), "test identical tensors 1", "content of x and y should be the same");
         mt_assert_true(t, !mt_is_tensor_eq(x, z), "test identical tensors 2", "content of x and y should be different");
-        mt_assert_true(t, mt_arrsame(x->indices[0], Arr(int, 0, 1), 2), "test initial 1st axis indices", "indices must be [0, 1]");
-        mt_assert_true(t, mt_arrsame(x->indices[1], Arr(int, 0, 1), 2), "test initial 2nd axis indices", "indices must be [0, 1]");
+        mt_assert_true(t, __mt_arrsame(x->indices[0], Arr(int, 0, 1), 2), "test initial 1st axis indices", "indices must be [0, 1]");
+        mt_assert_true(t, __mt_arrsame(x->indices[1], Arr(int, 0, 1), 2), "test initial 2nd axis indices", "indices must be [0, 1]");
 
         // scalar
         MTTensor *sc = mt_new_scalar(ctx, 42);
@@ -150,12 +150,12 @@ void run_get_data_by_constrain(Test *t) {
         /* "duplicate" row */
         MTTensor *x   = mt_new_tensor(ctx, Arr(float, 1, 2), Arr(int, 2), 1);
         float    *arr = mt_tensor_get_all_data_constrained(x, two_by_two->indices, Arr(int, 2, 2), Arr(int, 0, 1), 2);
-        mt_assert_true(t, mt_arrsame(arr, Arr(float, 1, 2, 1, 2), 4), "test get data by constrain, 1 to 2 dims", "should be {1, 2, 1, 2}");
+        mt_assert_true(t, __mt_arrsame(arr, Arr(float, 1, 2, 1, 2), 4), "test get data by constrain, 1 to 2 dims", "should be {1, 2, 1, 2}");
         free(arr);
 
         MTTensor *y = mt_new_tensor(ctx, Arr(float, 1, 2, 3, 4, 5, 6), Arr(int, 3, 2), 2);
         arr         = mt_tensor_get_all_data_constrained(y, two_by_three->indices, Arr(int, 2, 3), Arr(int, 1, 2), 2);
-        mt_assert_true(t, mt_arrsame(arr, Arr(float, 1, 3, 5, 2, 4, 6), 6), "test transpose with stride manipulation", "should be {1, 3, 5, 2, 4, 6}");
+        mt_assert_true(t, __mt_arrsame(arr, Arr(float, 1, 3, 5, 2, 4, 6), 6), "test transpose with stride manipulation", "should be {1, 3, 5, 2, 4, 6}");
         free(arr);
 
         mt_context_free(ctx);

@@ -50,11 +50,11 @@
 })
 
 MTTensor *mt_alloc_empty_tensor(MTContext *ctx) {
-        MTTensor *t = mt_newptr(MTTensor, 1);
+        MTTensor *t = __mt_newptr(MTTensor, 1);
         t->context  = ctx;
         t->data     = NULL;
         t->datalen  = 0;
-        t->deps     = mt_newptr(MTTensor *, INITIAL_N_DEPS);
+        t->deps     = __mt_newptr(MTTensor *, INITIAL_N_DEPS);
         t->grad     = NULL;
         t->grad_fn  = NULL;
         t->indices  = NULL;
@@ -70,7 +70,7 @@ MTTensor *mt_alloc_empty_tensor(MTContext *ctx) {
 }
 
 inline void __init_strides(MTTensor *t) {
-        t->strides = mt_newptr(int, t->ndims);
+        t->strides = __mt_newptr(int, t->ndims);
         for (int i = 0; i < t->ndims; i++) {
                 int prod = 1;
                 for (int j = i + 1; j < t->ndims; j++) {
@@ -90,9 +90,9 @@ void __free_indices(MTTensor *t) {
 inline void __init_indices(MTTensor *t) {
         if (t->indices != NULL) __free_indices(t);
 
-        t->indices = mt_newptr(int *, t->ndims);
+        t->indices = __mt_newptr(int *, t->ndims);
         for (int i = 0; i < t->ndims; i++) {
-                int *idx = mt_newptr(int, t->shape[i]);
+                int *idx = __mt_newptr(int, t->shape[i]);
                 for (long j = 0; j < t->shape[i]; j++) idx[j] = j;
 
                 t->indices[i] = idx;
@@ -105,10 +105,10 @@ MTTensor *mt_new_tensor(MTContext *context,
         int datalen = __prod(shape, ndims, int);
 
         MTTensor *t = mt_alloc_empty_tensor(context);
-        t->data     = mt_newptr(float, datalen);
+        t->data     = __mt_newptr(float, datalen);
         t->datalen  = datalen;
         t->ndims    = ndims;
-        t->shape    = mt_newptr(int, ndims);
+        t->shape    = __mt_newptr(int, ndims);
         __mt_memcpy(t->data, data, datalen);
         __mt_memcpy(t->shape, shape, ndims);
         __init_strides(t);
@@ -119,7 +119,7 @@ MTTensor *mt_new_tensor(MTContext *context,
 MTTensor *mt_new_tensor_full(MTContext *ctx, float val,
                              int *shape, int ndims) {
         int    datalen = __prod(shape, ndims, int);
-        float *data    = mt_newptr(float, datalen);
+        float *data    = __mt_newptr(float, datalen);
         for (long i = 0; i < datalen; i++) data[i] = val;
         MTTensor *t = mt_new_tensor(ctx, data, shape, ndims);
         free(data);
@@ -190,10 +190,10 @@ typedef struct {
  * containing index we want to iterate through, from each dimension.
  */
 IdxIterator *mt_new_idxiterator(int **indices, int *shape, int ndims) {
-        IdxIterator *it = mt_newptr(IdxIterator, 1);
+        IdxIterator *it = __mt_newptr(IdxIterator, 1);
         it->ndims       = ndims;
-        it->nextidx     = mt_newptr(int, ndims);
-        it->nextactidx  = mt_newptr(int, ndims);
+        it->nextidx     = __mt_newptr(int, ndims);
+        it->nextactidx  = __mt_newptr(int, ndims);
         it->indices     = indices;
         it->shape       = shape;
         it->i           = -1;
@@ -233,8 +233,8 @@ void mt_idxiterator_free(IdxIterator *it) {
 
 MTTensor *mt_tensor_slice(MTContext *ctx, MTTensor *t, int dim,
                           int *index, int indexlen) {
-        int **newindices = mt_newptr(int *, t->ndims);
-        int  *newshape   = mt_newptr(int, t->ndims);
+        int **newindices = __mt_newptr(int *, t->ndims);
+        int  *newshape   = __mt_newptr(int, t->ndims);
         for (int i = 0; i < t->ndims; i++) {
                 if (i == dim) {
                         newshape[i]   = indexlen;
@@ -281,7 +281,7 @@ float *mt_tensor_get_all_data_constrained(MTTensor *t, int **indices,
 
         IdxIterator *it     = mt_new_idxiterator(indices, shape, ndims);
         int          outlen = __prod(shape, ndims, int);
-        float       *res    = mt_newptr(float, outlen);
+        float       *res    = __mt_newptr(float, outlen);
         for (int i = 0; i < outlen; i++) {
                 int *nextidx = mt_idxiterator_next(it);
                 res[i]       = mt_tensor_get(t, nextidx, ndims);
@@ -298,7 +298,7 @@ float *mt_tensor_get_all_data_constrained(MTTensor *t, int **indices,
 }
 
 int *__range(int start, int end) {
-        int *r = mt_newptr(int, end - start);
+        int *r = __mt_newptr(int, end - start);
         for (int i = (start); i < (end); i++)
                 r[i] = i;
         return r;
@@ -316,7 +316,7 @@ BcastResult mt_broadcast_lr(MTTensor *left, MTTensor *right) {
                 return res;
         }
         if (left->ndims == right->ndims)
-                if (mt_arrsame(left->shape, right->shape, left->ndims)) {
+                if (__mt_arrsame(left->shape, right->shape, left->ndims)) {
                         res.status = BC_STATUS_NO_BCAST_REQUIRED;
                         return res;
                 }
@@ -329,8 +329,8 @@ BcastResult mt_broadcast_lr(MTTensor *left, MTTensor *right) {
         int   outndims = __max(left->ndims, right->ndims);
         int   lnewshape[outndims], ltmpstrides[outndims];
         int   rnewshape[outndims], rtmpstrides[outndims];
-        int **lnewindices = mt_newptr(int *, outndims);
-        int **rnewindices = mt_newptr(int *, outndims);
+        int **lnewindices = __mt_newptr(int *, outndims);
+        int **rnewindices = __mt_newptr(int *, outndims);
         int   lddiff      = abs(outndims - left->ndims);
         int   rddiff      = abs(outndims - right->ndims);
 
@@ -368,13 +368,13 @@ BcastResult mt_broadcast_lr(MTTensor *left, MTTensor *right) {
         int lshouldbc = 0;
         lshouldbc     = outndims != left->ndims;
         if (!lshouldbc && (left->ndims == outndims))
-                if (!mt_arrsame(lnewshape, left->shape, left->ndims))
+                if (!__mt_arrsame(lnewshape, left->shape, left->ndims))
                         lshouldbc = 1;
 
         int rshouldbc = 0;
         rshouldbc     = outndims != right->ndims;
         if (!rshouldbc && (right->ndims == outndims))
-                if (!mt_arrsame(rnewshape, right->shape, right->ndims))
+                if (!__mt_arrsame(rnewshape, right->shape, right->ndims))
                         rshouldbc = 1;
 
         float *ldata = NULL;
@@ -446,7 +446,7 @@ void mt_tensor_free(MTTensor *t) {
 
 /* remove NULLs in the tracked list */
 void mt_context_defrag(MTContext *ctx) {
-        MTTensor **newtracked = mt_newptr(MTTensor *, ctx->ntracked);
+        MTTensor **newtracked = __mt_newptr(MTTensor *, ctx->ntracked);
 
         int cnt = 0;
         for (int i = 0; i < ctx->ntracked; i++)
@@ -470,11 +470,11 @@ void mt_context_free(MTContext *ctx) {
 }
 
 MTContext *mt_new_context(void) {
-        MTContext *ctx = mt_newptr(MTContext, 1);
+        MTContext *ctx = __mt_newptr(MTContext, 1);
         ctx->withgrads = CGM_OVERRIDE;
         ctx->ntracked  = 0;
         ctx->cap       = INITIAL_CAP;
-        ctx->tracked   = mt_newptr(MTTensor *, INITIAL_CAP);
+        ctx->tracked   = __mt_newptr(MTTensor *, INITIAL_CAP);
         return ctx;
 }
 
@@ -544,6 +544,6 @@ int mt_is_tensor_eq(MTTensor *a, MTTensor *b) {
         if ((a != NULL) && (b == NULL)) return 0;
 
         if (a->ndims != b->ndims) return 0;
-        return mt_arrsame(a->data, b->data, a->datalen) &&
-               mt_arrsame(a->shape, b->shape, a->ndims);
+        return __mt_arrsame(a->data, b->data, a->datalen) &&
+               __mt_arrsame(a->shape, b->shape, a->ndims);
 }

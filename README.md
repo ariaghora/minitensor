@@ -1,3 +1,11 @@
+# Minitensor 
+
+A tensor manipulation library.
+
+Supports:
+- Broadcasting
+- Autograd
+
 ## Usage
 
 Include `minitensor.h` in your source files and compile them along with `tensor.c` and `math.c`.

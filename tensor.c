@@ -341,6 +341,9 @@ BcastResult mt_broadcast_lr(MTTensor *left, MTTensor *right) {
                 rtmpstrides[i] = i < rddiff ? 0 : right->strides[i - rddiff];
 
                 if (lnewshape[i] != rnewshape[i]) {
+                        ltmpstrides[i] = lnewshape[i] < rnewshape[i] ? 0 : ltmpstrides[i];
+                        rtmpstrides[i] = lnewshape[i] > rnewshape[i] ? 0 : rtmpstrides[i];
+
                         if (lnewshape[i] == 1 || rnewshape[i] == 1) {
                                 lnewshape[i] = __max(lnewshape[i], rnewshape[i]);
                                 rnewshape[i] = __max(lnewshape[i], rnewshape[i]);
@@ -373,8 +376,6 @@ BcastResult mt_broadcast_lr(MTTensor *left, MTTensor *right) {
         if (!rshouldbc && (right->ndims == outndims))
                 if (!mt_arrsame(rnewshape, right->shape, right->ndims))
                         rshouldbc = 1;
-
-        /* ... */
 
         float *ldata = NULL;
         if (lshouldbc) {
@@ -511,7 +512,8 @@ void mt_tensor_backward(MTTensor *t, MTTensor *grad) {
         t->grad = mt_tensor_add(t->grad, grad);
 
         for (int i = 0; i < t->ndeps; i++) {
-                if (t->deps[i]->grad_fn == NULL) EXIT_WITH_ERROR("fatal: no grad_fn defined");
+                if (t->deps[i]->grad_fn == NULL)
+                        EXIT_WITH_ERROR("fatal: no grad_fn defined");
                 MTTensor *bwgrad = t->deps[i]->grad_fn(t->deps, grad);
                 mt_tensor_backward(t->deps[i], bwgrad);
         }
@@ -522,9 +524,10 @@ void mt_tensor_zero_grad(MTTensor *t) {
 }
 
 void mt_tensor_print_debug(MTTensor *t) {
-        printf("ndims : %d\n", t->ndims);
-        printf("ndeps : %d\n", t->ndeps);
-        printf("shape : "), __printarr(t->shape, t->ndims, "%d"), printf("\n");
+        printf("ndims   : %d\n", t->ndims);
+        printf("ndeps   : %d\n", t->ndeps);
+        printf("shape   : "), __printarr(t->shape, t->ndims, "%d"), printf("\n");
+        printf("strides : "), __printarr(t->strides, t->ndims, "%d"), printf("\n");
         printf("data \n");
         printf("  - datalen : %ld\n", t->datalen);
         printf("  - content : "), __printarr(t->data, t->datalen, "%.2f");

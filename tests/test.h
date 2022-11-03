@@ -4,14 +4,14 @@ typedef struct {
 } Test;
 
 #define new_test() ((Test){.nfail = 0, .npass = 0})
-#define mt_assert_true(test, boolexp, test_desc, msg_if_wrong) ({                  \
-        if (!(boolexp)) {                                                          \
-                printf("\033[31m[FAIL]\033[0m %s: %s\n", test_desc, msg_if_wrong); \
-                t->nfail++;                                                        \
-        } else {                                                                   \
-                printf("\033[32m[PASS]\033[0m %s\n", test_desc);                   \
-                t->npass++;                                                        \
-        }                                                                          \
+#define mt_assert_true(test, boolexp, test_desc, msg_if_wrong) ({                         \
+        if (!(boolexp)) {                                                                 \
+                printf("\033[31m[FAIL]\033[0m %s\n    >> %s\n", test_desc, msg_if_wrong); \
+                t->nfail++;                                                               \
+        } else {                                                                          \
+                printf("\033[32m[PASS]\033[0m %s\n", test_desc);                          \
+                t->npass++;                                                               \
+        }                                                                                 \
 })
 
 /* testing tensor core functionality */

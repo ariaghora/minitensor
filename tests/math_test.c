@@ -25,12 +25,21 @@ void run_tensor_addition_tests(Test *t) {
         mt_assert_true(t, mt_is_tensor_eq(mt_tensor_add(sc1, sc2), mt_new_scalar(ctx, 5)), "test scalar-scalar addition", "scalar-scalar addition result is wrog");
 
         MTTensor *big   = mt_new_tensor(ctx, Arr(float, 1, 2, 3, 4), Arr(int, 2, 2), 2);
-        MTTensor *small = mt_new_tensor(ctx, Arr(float, 2, 2, 2, 2), Arr(int, 2), 1);
+        MTTensor *small = mt_new_tensor(ctx, Arr(float, 2, 2), Arr(int, 2), 1);
         mt_assert_true(t,
                        mt_is_tensor_eq(
                            mt_tensor_add(big, small),
                            mt_new_tensor(ctx, Arr(float, 3, 4, 5, 6), Arr(int, 2, 2), 2)),
-                       "test tensor-tensor addition with broadcasting",
+                       "test tensor-tensor addition with broadcasting (1)",
+                       "should be {3, 4, 5, 6}");
+
+        /* Now the small is also 2 dimension, but size of 1 in the leading dim */
+        small = mt_new_tensor(ctx, Arr(float, 1, 2), Arr(int, 2), 1);
+        mt_assert_true(t,
+                       mt_is_tensor_eq(
+                           mt_tensor_add(big, small),
+                           mt_new_tensor(ctx, Arr(float, 2, 4, 4, 6), Arr(int, 2, 2), 2)),
+                       "test tensor-tensor addition with broadcasting (1)",
                        "should be {3, 4, 5, 6}");
         mt_free(ctx);
 }

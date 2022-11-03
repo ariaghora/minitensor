@@ -18,11 +18,10 @@ void run_simple_autograd_tests(Test *t) {
         MTTensor *y = mt_new_tensor(ctx, Arr(float, 2, 4, 6, 8), Arr(int, 2, 2), 2);
         mt_tensor_enable_grad(y);
 
-        // test if at least one of operand requires grad, then the the result
-        // also requires grad
+        /* test if at least one of operand requires grad, then the the result also requires grad */
         MTTensor *res = mt_tensor_add(x, y);
         mt_assert_true(t, res->req_grad, "test binop with grad", "res should require grad");
-        mt_assert_true(t, res->deps[0] == x, "test binop resulting lchild with grad", "res lchild should be x");
+        mt_assert_true(t, res->deps[0] == NULL, "test binop resulting lchild with grad", "res lchild should be NULL");
         mt_assert_true(t, res->deps[1] == y, "test binop resulting rchild with grad", "res rchild should be y");
 
         mt_tensor_disable_grad(y);
@@ -64,6 +63,7 @@ void run_autograd_add_tests(Test *t) {
         mt_tensor_enable_grad(x);
         mt_tensor_enable_grad(y);
 
+        /* simple add */
         MTTensor *z = mt_tensor_add(x, y);
         mt_assert_true(t, mt_is_tensor_eq(z, mt_new_tensor(ctx, Arr(float, 5, 7, 9), Arr(int, 3), 1)), "test simple add correct", "should be {5, 7, 9}");
 
@@ -71,6 +71,49 @@ void run_autograd_add_tests(Test *t) {
         mt_assert_true(t, mt_is_tensor_eq(x->grad, mt_new_tensor(ctx, Arr(float, -1, -2, -3), Arr(int, 3), 1)), "test grad A+B wrt A", "should be {-1,-2,-3}");
         mt_assert_true(t, mt_is_tensor_eq(y->grad, mt_new_tensor(ctx, Arr(float, -1, -2, -3), Arr(int, 3), 1)), "test grad A+B wrt B", "should be {-1,-2,-3}");
 
+        /* add with broadcasting */
+        MTTensor *big   = mt_new_tensor(ctx, Arr(float, 1, 2, 3, 4, 5, 6), Arr(int, 2, 3), 2);
+        MTTensor *small = mt_new_tensor(ctx, Arr(float, 7, 8, 9), Arr(int, 3), 1);
+        mt_tensor_enable_grad(big);
+        mt_tensor_enable_grad(small);
+        MTTensor *res = mt_tensor_add(big, small);
+        mt_tensor_backward(res, mt_new_tensor(ctx, Arr(float, 1, 1, 1, 1, 1, 1), Arr(int, 2, 3), 2));
+
+        mt_assert_true(t,
+                       mt_is_tensor_eq(
+                           big->grad,
+                           mt_new_tensor(ctx, Arr(float, 1, 1, 1, 1, 1, 1), Arr(int, 2, 3), 2)),
+                       "test A+B grad of bigger tensor (1)", "should be {{1, 1, 1}, {1, 1, 1}}");
+        mt_assert_true(t,
+                       mt_is_tensor_eq(
+                           small->grad,
+                           mt_new_tensor(ctx, Arr(float, 2, 2, 2), Arr(int, 3), 1)),
+                       "test A+B grad of smaller tensor (1)", "should be {2, 2, 2}");
+
+        big   = mt_new_tensor(ctx, Arr(float, 1, 2, 3, 4, 5, 6), Arr(int, 2, 3), 2);
+        small = mt_new_tensor(ctx, Arr(float, 7, 8, 9), Arr(int, 1, 3), 2);
+        mt_tensor_enable_grad(small);
+        mt_tensor_enable_grad(big);
+
+        res = mt_tensor_add(big, small);
+
+        mt_assert_true(t,
+                       mt_is_tensor_eq(
+                           res,
+                           mt_new_tensor(ctx, Arr(float, 8, 10, 12, 11, 13, 15), Arr(int, 2, 3), 2)),
+                       "test A+B result, broadcasted, with grad ", "should be {{8, 10, 12}, {11, 13, 15}}");
+
+        mt_tensor_backward(res, mt_new_tensor(ctx, Arr(float, 1, 1, 1, 1, 1, 1), Arr(int, 2, 3), 2));
+        mt_assert_true(t,
+                       mt_is_tensor_eq(
+                           big->grad,
+                           mt_new_tensor(ctx, Arr(float, 1, 1, 1, 1, 1, 1), Arr(int, 2, 3), 2)),
+                       "test A+B grad of bigger tensor (2)", "should be {{1, 1, 1}, {1, 1, 1}}");
+        mt_assert_true(t,
+                       mt_is_tensor_eq(
+                           small->grad,
+                           mt_new_tensor(ctx, Arr(float, 2, 2, 2), Arr(int, 1, 3), 2)),
+                       "test A+B grad of smaller tensor (2)", "should be {{2, 2, 2}}}");
         mt_free(ctx);
 }
 

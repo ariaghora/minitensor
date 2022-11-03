@@ -85,6 +85,18 @@ void run_tensor_subtraction_tests(Test *t) {
         mt_free(ctx);
 }
 
+void run_tensor_negation_tests(Test *t) {
+        MTContext *ctx = mt_new_context();
+        MTTensor  *x   = mt_new_tensor(ctx, Arr(float, 1, 2, 3, 4), Arr(int, 2, 2), 2);
+        mt_assert_true(t,
+                       mt_is_tensor_eq(
+                           mt_tensor_neg(x),
+                           mt_new_tensor(ctx, Arr(float, -1, -2, -3, -4), Arr(int, 2, 2), 2)),
+                       "test negation",
+                       "should be {-1,-2,-3,-4}");
+        mt_free(ctx);
+}
+
 void run_tensor_reduce_tests(Test *t) {
         MTContext *ctx     = mt_new_context();
         MTTensor  *x       = mt_new_tensor(ctx, Arr(float, 1, 2, 3, 4, 5, 6), Arr(int, 3, 2), 2);

@@ -25,6 +25,7 @@ void run_get_data_by_constrain(Test *t);
 /* testing math functionality **/
 void run_tensor_addition_tests(Test *);
 void run_tensor_subtraction_tests(Test *);
+void run_tensor_negation_tests(Test *t);
 void run_tensor_sum_tests(Test *t);
 
 /* testing autograd engine **/

@@ -42,9 +42,9 @@ MTTensor *mt_tensor_reduce(MTTensor *t, int dim, TensorBFunc bfunc,
  * The low-level implementation of general binary functions. Typically we
  * don't use this directly (in the user's code). This function is used to
  * help defining more "concrete" binary functions, e.g., addition, subtract-
- * ion, division, etc. See the next subsection.
+ * ion, division, etc.
  */
-MTTensor *tensor_bfunc(MTTensor *a, MTTensor *b, BFunc bfunc) {
+MTTensor *mt_tensor_bfunc(MTTensor *a, MTTensor *b, BFunc bfunc) {
         if (a->context != b->context)
                 EXIT_WITH_ERROR("a and b cannot be in different context");
 
@@ -90,7 +90,7 @@ MTTensor *tensor_bfunc(MTTensor *a, MTTensor *b, BFunc bfunc) {
         res->isleaf = 0;
 
         if (a->req_grad || b->req_grad) {
-                res->req_grad = 1;
+                mt_tensor_enable_grad(res);
                 __mt_push_deps(res, a);
                 __mt_push_deps(res, b);
         }
@@ -103,6 +103,26 @@ MTTensor *tensor_bfunc(MTTensor *a, MTTensor *b, BFunc bfunc) {
          * to the same address */
         mt_context_defrag(a->context);
 
+        return res;
+}
+
+/**
+ * The low-level implementation of general unary functions. Typically we
+ * don't use this directly (in the user's code). This function is used to
+ * help defining more "concrete" binary functions, e.g., negation, recip-
+ * rocation, exponentiation, etc.
+ */
+MTTensor *mt_tensor_ufunc(MTTensor *t, UFunc ufunc) {
+        float *resdata = mt_newptr(float, t->datalen);
+        for (int i = 0; i < t->datalen; i++)
+                resdata[i] = ufunc(t->data[i]);
+
+        MTTensor *res = mt_new_tensor(t->context, resdata, t->shape, t->ndims);
+        if (t->req_grad) {
+                mt_tensor_enable_grad(res);
+                __mt_push_deps(res, t);
+        }
+        free(resdata);
         return res;
 }
 
@@ -138,7 +158,7 @@ MTTensor *__add_backward_b(MTTensor **prtdeps, MTTensor *grad) {
         return mt_grad_unbroadcast(grad, b);
 }
 MTTensor *mt_tensor_add(MTTensor *a, MTTensor *b) {
-        MTTensor *res = tensor_bfunc(a, b, __add);
+        MTTensor *res = mt_tensor_bfunc(a, b, __add);
         if (a->req_grad || b->req_grad) mt_tensor_enable_grad(res);
         __set_grad_fn(a, __add_backward_a);
         __set_grad_fn(b, __add_backward_b);
@@ -149,13 +169,19 @@ MTTensor *mt_tensor_add(MTTensor *a, MTTensor *b) {
 float     __sub(float a, float b) { return a - b; }
 void      __sub_backward(MTTensor *grad);
 MTTensor *mt_tensor_sub(MTTensor *a, MTTensor *b) {
-        return tensor_bfunc(a, b, __sub);
+        return mt_tensor_bfunc(a, b, __sub);
 }
 
 /* element-wise multiplication operation */
 float     __mul(float a, float b) { return a * b; }
 MTTensor *mt_tensor_mul(MTTensor *a, MTTensor *b) {
-        return tensor_bfunc(a, b, __mul);
+        return mt_tensor_bfunc(a, b, __mul);
+}
+
+/* negation operation */
+float     __neg(float x) { return -x; }
+MTTensor *mt_tensor_neg(MTTensor *t) {
+        return mt_tensor_ufunc(t, __neg);
 }
 
 /* sum operation */

@@ -22,6 +22,11 @@ typedef enum { DEVICE_CPU,
  */
 typedef float (*BFunc)(float, float);
 /**
+ * UFunc: the float-valued unary function, alias for float(float)
+ * function
+ */
+typedef float (*UFunc)(float);
+/**
  * TensorBFunc: the tensor-tensor binary function, alias for
  * MTTensor*(MTTensor**, MTTensor*) function
  */
@@ -124,10 +129,12 @@ MTTensor  *mt_tensor_slice(MTContext *ctx, MTTensor *t, int dim,
 MTTensor  *mt_tensor_sum(MTTensor *t, int dim, int keepdims);
 void       mt_tensor_free(MTTensor *t);
 MTTensor  *mt_tensor_bfunc(MTTensor *a, MTTensor *b, BFunc bfunc);
+MTTensor  *mt_tensor_ufunc(MTTensor *t, UFunc ufunc);
 MTTensor  *mt_tensor_add(MTTensor *a, MTTensor *b);
 MTTensor  *mt_tensor_sub(MTTensor *a, MTTensor *b);
 MTTensor  *mt_tensor_mul(MTTensor *a, MTTensor *b);
 MTTensor  *mt_tensor_div(MTTensor *a, MTTensor *b);
+MTTensor  *mt_tensor_neg(MTTensor *t);
 MTTensor  *mt_tensor_reduce(MTTensor *t, int dim, TensorBFunc bfunc,
                             int keepdims);
 MTContext *mt_new_context(void);

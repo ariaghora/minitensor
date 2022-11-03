@@ -495,8 +495,11 @@ void mt_tensor_enable_grad(MTTensor *t) {
 
 void mt_tensor_disable_grad(MTTensor *t) {
         t->req_grad = 0;
-        if (t->grad != NULL)
+        if (t->grad != NULL) {
+                mt_tensor_free(t->grad);
                 t->grad = NULL;
+                mt_context_defrag(t->context);
+        }
 }
 
 void mt_tensor_backward(MTTensor *t, MTTensor *grad) {
@@ -523,6 +526,7 @@ void mt_tensor_backward(MTTensor *t, MTTensor *grad) {
 }
 
 void mt_tensor_zero_grad(MTTensor *t) {
+        mt_tensor_free(t->grad);
         t->grad = mt_new_tensor_full(t->context, 0., t->shape, t->ndims);
 }
 
@@ -703,15 +707,18 @@ MTTensor *__mt_grad_unbroadcast(MTTensor *grad, MTTensor *wrt_tensor) {
 }
 
 /* addition operation */
-float     __add(float a, float b) { return a + b; }
+float __add(float a, float b) { return a + b; }
+
 MTTensor *__add_backward_a(MTTensor **prtdeps, MTTensor *grad) {
         MTTensor *a = prtdeps[0];
         return __mt_grad_unbroadcast(grad, a);
 }
+
 MTTensor *__add_backward_b(MTTensor **prtdeps, MTTensor *grad) {
         MTTensor *b = prtdeps[1];
         return __mt_grad_unbroadcast(grad, b);
 }
+
 MTTensor *mt_tensor_add(MTTensor *a, MTTensor *b) {
         MTTensor *res = mt_tensor_bfunc(a, b, __add);
         if (a->req_grad || b->req_grad) mt_tensor_enable_grad(res);
@@ -724,14 +731,17 @@ MTTensor *mt_tensor_add(MTTensor *a, MTTensor *b) {
 
 /* subtraction operation */
 inline float __sub(float a, float b) { return a - b; }
-MTTensor    *__sub_backward_a(MTTensor **prtdeps, MTTensor *grad) {
-           MTTensor *a = prtdeps[0];
-           return __mt_grad_unbroadcast(grad, a);
+
+MTTensor *__sub_backward_a(MTTensor **prtdeps, MTTensor *grad) {
+        MTTensor *a = prtdeps[0];
+        return __mt_grad_unbroadcast(grad, a);
 }
+
 MTTensor *__sub_backward_b(MTTensor **prtdeps, MTTensor *grad) {
         MTTensor *b = prtdeps[1];
         return __mt_grad_unbroadcast(mt_tensor_neg(grad), b);
 }
+
 MTTensor *mt_tensor_sub(MTTensor *a, MTTensor *b) {
         MTTensor *res = mt_tensor_bfunc(a, b, __sub);
         if (a->req_grad || b->req_grad) mt_tensor_enable_grad(res);
@@ -742,16 +752,34 @@ MTTensor *mt_tensor_sub(MTTensor *a, MTTensor *b) {
 
 /* element-wise multiplication operation */
 inline float __mul(float a, float b) { return a * b; }
-MTTensor    *mt_tensor_mul(MTTensor *a, MTTensor *b) {
-           MTTensor *res = mt_tensor_bfunc(a, b, __mul);
-           return res;
+
+MTTensor *__mul_backward_a(MTTensor **prtdeps, MTTensor *grad) {
+        MTTensor *b = prtdeps[1];
+        grad        = mt_tensor_mul(grad, b);
+        return __mt_grad_unbroadcast(grad, b);
+}
+
+MTTensor *__mul_backward_b(MTTensor **prtdeps, MTTensor *grad) {
+        MTTensor *a = prtdeps[0];
+        grad        = mt_tensor_mul(grad, a);
+        return __mt_grad_unbroadcast(grad, a);
+}
+
+MTTensor *mt_tensor_mul(MTTensor *a, MTTensor *b) {
+        MTTensor *res = mt_tensor_bfunc(a, b, __mul);
+        if (a->req_grad || b->req_grad) mt_tensor_enable_grad(res);
+        __mt_push_deps_at(res, a, 0, __mul_backward_a);
+        __mt_push_deps_at(res, b, 1, __mul_backward_b);
+        return res;
 }
 
 /* negation operation */
 inline float __neg(float x) { return -x; }
-MTTensor    *__neg_backward(MTTensor **prtdeps, MTTensor *grad) {
-           return mt_tensor_neg(grad);
+
+MTTensor *__neg_backward(MTTensor **prtdeps, MTTensor *grad) {
+        return mt_tensor_neg(grad);
 }
+
 MTTensor *mt_tensor_neg(MTTensor *t) {
         MTTensor *res = mt_tensor_ufunc(t, __neg);
         if (t->req_grad) mt_tensor_enable_grad(res);
@@ -766,6 +794,7 @@ MTTensor *__sum_backward(MTTensor **prtdeps, MTTensor *grad) {
                                             self->ndims);
         return mt_tensor_mul(grad, ones);
 }
+
 MTTensor *mt_tensor_sum(MTTensor *t, int dim, int keepdim) {
         if (dim > -1) return mt_tensor_reduce(t, dim, mt_tensor_add, keepdim);
 

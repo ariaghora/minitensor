@@ -62,10 +62,8 @@ MTTensor *mt_tensor_bfunc(MTTensor *a, MTTensor *b, BFunc bfunc) {
             a->ndims > b->ndims ? a->datalen : b->datalen);
 
         if (bcr.status == BC_STATUS_SKIP_SCALAR_HANDLING) {
-                /**
-                 * case 1, when the broadcasting result suggests tensor-scalar
-                 * or scalar-scalar binary operation
-                 */
+                /* Case 1, when the broadcasting result suggests tensor-scalar
+                 * or scalar-scalar binary operation */
                 if (a->ndims == 0) {
                         float val = mt_tensor_get_v(a);
                         for (long i = 0; i < b->datalen; i++)
@@ -76,17 +74,22 @@ MTTensor *mt_tensor_bfunc(MTTensor *a, MTTensor *b, BFunc bfunc) {
                                 resdata[i] = bfunc(a->data[i], val);
                 }
         } else {
-                /* case 2, when the broadcasting result suggests tensor-tensor
+                /* Case 2, when the broadcasting result suggests tensor-tensor
                  * binary operation */
                 for (long i = 0; i < a->datalen; i++)
                         resdata[i] = bfunc(a->data[i], b->data[i]);
         }
 
+        /* Reaching this line means that either broadcasting is successful or
+         * no broadcasting is required. We can use `resdata` to create a new
+         * tensor to return, while using the new shape and ndims. We can now
+         * assume that a->shape == b->shape and a->ndims == b->ndims, so using
+         * information only from a (or b) alone is fine. */
         MTTensor *res = mt_new_tensor(
             a->context,
             resdata,
-            a->ndims > b->ndims ? a->shape : b->shape,
-            a->ndims > b->ndims ? a->ndims : b->ndims);
+            a->shape,
+            a->ndims);
         res->isleaf = 0;
 
         if (a->req_grad || b->req_grad) {
@@ -109,7 +112,7 @@ MTTensor *mt_tensor_bfunc(MTTensor *a, MTTensor *b, BFunc bfunc) {
 /**
  * The low-level implementation of general unary functions. Typically we
  * don't use this directly (in the user's code). This function is used to
- * help defining more "concrete" binary functions, e.g., negation, recip-
+ * help defining more "concrete" unary functions, e.g., negation, recip-
  * rocation, exponentiation, etc.
  */
 MTTensor *mt_tensor_ufunc(MTTensor *t, UFunc ufunc) {
@@ -166,22 +169,33 @@ MTTensor *mt_tensor_add(MTTensor *a, MTTensor *b) {
 }
 
 /* subtraction operation */
-float     __sub(float a, float b) { return a - b; }
-void      __sub_backward(MTTensor *grad);
+inline float __sub(float a, float b) { return a - b; }
+MTTensor    *__sub_backward_a(MTTensor **prtdeps, MTTensor *grad) {
+           MTTensor *a = prtdeps[0];
+           return mt_grad_unbroadcast(grad, a);
+}
+MTTensor *__sub_backward_b(MTTensor **prtdeps, MTTensor *grad) {
+        MTTensor *b = prtdeps[1];
+        return mt_grad_unbroadcast(mt_tensor_neg(grad), b);
+}
 MTTensor *mt_tensor_sub(MTTensor *a, MTTensor *b) {
-        return mt_tensor_bfunc(a, b, __sub);
+        MTTensor *res = mt_tensor_bfunc(a, b, __sub);
+        if (a->req_grad || b->req_grad) mt_tensor_enable_grad(res);
+        __set_grad_fn(a, __sub_backward_a);
+        __set_grad_fn(b, __sub_backward_b);
+        return res;
 }
 
 /* element-wise multiplication operation */
-float     __mul(float a, float b) { return a * b; }
-MTTensor *mt_tensor_mul(MTTensor *a, MTTensor *b) {
-        return mt_tensor_bfunc(a, b, __mul);
+inline float __mul(float a, float b) { return a * b; }
+MTTensor    *mt_tensor_mul(MTTensor *a, MTTensor *b) {
+           return mt_tensor_bfunc(a, b, __mul);
 }
 
 /* negation operation */
-float     __neg(float x) { return -x; }
-MTTensor *mt_tensor_neg(MTTensor *t) {
-        return mt_tensor_ufunc(t, __neg);
+inline float __neg(float x) { return -x; }
+MTTensor    *mt_tensor_neg(MTTensor *t) {
+           return mt_tensor_ufunc(t, __neg);
 }
 
 /* sum operation */

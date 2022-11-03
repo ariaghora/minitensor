@@ -1,7 +1,8 @@
 CC = gcc 
 CFLAGS = -std=c99 -Wall -g -O3 -Werror -Wstrict-prototypes
-SOURCES = ../tensor.c ../math.c 
+SOURCES = ../minitensor.c 
 TEST_SOURCE = ./*.c
+VGFLAGS = --track-origins=yes --leak-check=full --show-leak-kinds=all -s
 
 .PHONY: minitensor_test
 minitensor_test:
@@ -13,7 +14,7 @@ test: minitensor_test
 
 .PHONY: test/dbgmem
 test/dbgmem: minitensor_test
-	@make clean && make && valgrind --track-origins=yes --leak-check=full --show-leak-kinds=all -s ./minitensor_test && rm -f minitensor_test
+	@make clean && make && valgrind $(VGFLAGS) ./minitensor_test && rm -f minitensor_test
 
 clean:
 	@rm -f minitensor_test

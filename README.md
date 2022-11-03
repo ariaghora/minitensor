@@ -8,7 +8,7 @@ Supports:
 
 ## Usage
 
-Include `minitensor.h` in your source files and compile them along with `tensor.c` and `math.c`.
+Include `minitensor.h` in your source files and compile them along with `minitensor.c`.
 
 ## Running tests
 

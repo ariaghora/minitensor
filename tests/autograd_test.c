@@ -22,7 +22,7 @@ void run_simple_autograd_tests(Test *t) {
         MTTensor *res = mt_tensor_add(x, y);
         mt_assert_true(t, res->req_grad, "test binop with grad", "res should require grad");
         mt_assert_true(t, res->deps[0] == NULL, "test binop resulting lchild with grad", "res lchild should be NULL");
-        mt_assert_true(t, res->deps[1] == y, "test binop resulting rchild with grad", "res rchild should be y");
+        mt_assert_true(t, res->deps[1]->tensor == y, "test binop resulting rchild with grad", "res rchild should be y");
 
         mt_tensor_disable_grad(y);
         res = mt_tensor_add(x, y);
@@ -48,7 +48,7 @@ void run_autograd_backward_tests(Test *t) {
         mt_tensor_backward(sum, NULL);
         mt_assert_true(t, x->grad != NULL, "test dependent grad non-null after backward", "dependent grad should not be null");
         mt_assert_true(t, mt_is_tensor_eq(x->grad, expgrad1), "test dependent grad value", "grad value should be all 1");
-        mt_assert_true(t, x->grad_fn != NULL, "test grad_fn not null", "grad_fn should not be NULL");
+        mt_assert_true(t, sum->deps[0]->grad_fn != NULL, "test grad_fn not null", "grad_fn should not be NULL");
 
         MTTensor *expgrad2 = mt_new_tensor(ctx, Arr(float, 3, 3, 3), Arr(int, 3, 1), 2);
         sum                = mt_tensor_sum(y, -1, 0);

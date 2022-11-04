@@ -8,8 +8,10 @@
 #ifndef MINITENSOR_H_
 #define MINITENSOR_H_
 
-typedef struct MTTensor  MTTensor;
-typedef struct MTContext MTContext;
+typedef struct MTTensor    MTTensor;
+typedef struct MTContext   MTContext;
+typedef struct BcastResult BcastResult;
+typedef struct Dependency  Dependency;
 typedef enum { CGM_REQUIRE_GRAD,
                CGM_NO_REQUIRE_GRAD,
                CGM_OVERRIDE } MtContextGradMode;
@@ -35,7 +37,7 @@ typedef MTTensor *(*TensorBFunc)(MTTensor *, MTTensor *);
  * TensorBackwardFunc: the backward function type, alias for
  * MTTensor*(MTTensor**, MTTensor*) function
  */
-typedef MTTensor *(*TensorBackwardFunc)(MTTensor **, MTTensor *);
+typedef MTTensor *(*TensorBackwardFunc)(Dependency **, MTTensor *);
 
 /**
  * A context manages information of underlying allocated tensors it tracks.
@@ -102,11 +104,9 @@ struct MTTensor {
         MTContext *context;
         /* A list of tensors dependent on this tensor (in computational graph).
          */
-        MTTensor **deps;
-        MTTensor  *grad;
-        MTTensor  *parent;
-        /* Function to compute gradient during backward mode autograd*/
-        TensorBackwardFunc grad_fn;
+        Dependency **deps;
+        MTTensor    *grad;
+        MTTensor    *parent;
 };
 
 /**
@@ -150,15 +150,20 @@ void       mt_tensor_print_debug(MTTensor *t);
 /**
  * Internal API
  */
+
 typedef enum { BC_STATUS_NO_BCAST_REQUIRED,
                BC_STATUS_SKIP_SCALAR_HANDLING,
                BC_STATUS_SUCCESS,
                BC_STATUS_FAILURE } BcastStatus;
-typedef struct BcastResult BcastResult;
 struct BcastResult {
         MTTensor   *left;
         MTTensor   *right;
         BcastStatus status;
+};
+
+struct Dependency {
+        MTTensor          *tensor;
+        TensorBackwardFunc grad_fn;
 };
 
 /**

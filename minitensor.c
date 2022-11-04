@@ -17,7 +17,7 @@
  *
  ****************************************************************************/
 
-#define INITIAL_CAP 8
+#define INITIAL_CAP 18
 #define INITIAL_N_DEPS 4
 
 #define __find_in_list(container, to_find, len) ({   \
@@ -54,9 +54,8 @@ MTTensor *mt_alloc_empty_tensor(MTContext *ctx) {
         t->context  = ctx;
         t->data     = NULL;
         t->datalen  = 0;
-        t->deps     = __mt_newptr(MTTensor *, INITIAL_N_DEPS);
+        t->deps     = __mt_newptr(Dependency *, INITIAL_N_DEPS);
         t->grad     = NULL;
-        t->grad_fn  = NULL;
         t->indices  = NULL;
         t->isleaf   = 1;
         t->ndeps    = 0;
@@ -245,8 +244,8 @@ MTTensor *mt_tensor_slice(MTContext *ctx, MTTensor *t, int dim,
                 }
         }
 
-        int   newlen = __prod(newshape, t->ndims, int);
-        float newdata[newlen];
+        int    newlen  = __prod(newshape, t->ndims, int);
+        float *newdata = __mt_newptr(float, newlen);
 
         IdxIterator *it = mt_new_idxiterator(newindices, newshape, t->ndims);
         for (int i = 0; i < newlen; i++) {
@@ -254,7 +253,7 @@ MTTensor *mt_tensor_slice(MTContext *ctx, MTTensor *t, int dim,
                 newdata[i] = mt_tensor_get(t, idxs, t->ndims);
         }
         MTTensor *newtensor = mt_new_tensor(ctx, newdata, newshape, t->ndims);
-        mt_idxiterator_free(it), free(newshape), free(newindices);
+        mt_idxiterator_free(it), free(newshape), free(newindices), free(newdata);
 
         return newtensor;
 }
@@ -421,21 +420,16 @@ void mt_squeeze_at_dim(int targetdim, int *shape, int *strides, int **indices, i
 
 void mt_tensor_free(MTTensor *t) {
         if (t != NULL) {
-                /* Null the index of node's parent's children that points
-                 * to this node */
-                int idxpchild = -1;
-                if (t->parent != NULL)
-                        idxpchild = __find_in_list(t->parent->deps, t,
-                                                   t->parent->ndeps);
-                if (idxpchild > -1) t->parent->deps[idxpchild] = NULL;
-
-                /* also null the index of node's tracker that points to this node */
+                /* Null the index of node's tracker that points to this node */
                 int idxtracker = __find_in_list(t->context->tracked,
                                                 t,
                                                 t->context->ntracked);
                 if (idxtracker > -1) t->context->tracked[idxtracker] = NULL;
 
+                for (int i = 0; i < t->ndeps; i++)
+                        free(t->deps[i]);
                 free(t->deps);
+
                 free(t->data);
                 free(t->shape);
                 free(t->strides);
@@ -503,8 +497,7 @@ void mt_tensor_disable_grad(MTTensor *t) {
 }
 
 void mt_tensor_backward(MTTensor *t, MTTensor *grad) {
-        if (!t->req_grad)
-                EXIT_WITH_ERROR("cannot perform backward on tensor not requiring grad");
+        if (!t->req_grad) return;
 
         if (grad == NULL) {
                 if (t->ndims == 0)
@@ -512,7 +505,8 @@ void mt_tensor_backward(MTTensor *t, MTTensor *grad) {
                 else
                         EXIT_WITH_ERROR("grad must be specified for non scalar tensor");
         }
-        t->grad = mt_tensor_add(t->grad, grad);
+        t->grad = mt_tensor_add(t->grad,
+                                grad);
 
         /* recursively compute gradient of t's non-null children */
         for (int i = 0; i < t->ndeps; i++) {
@@ -520,7 +514,7 @@ void mt_tensor_backward(MTTensor *t, MTTensor *grad) {
                         if (t->deps[i]->grad_fn == NULL)
                                 EXIT_WITH_ERROR("fatal: no grad_fn defined");
                         MTTensor *bwgrad = t->deps[i]->grad_fn(t->deps, grad);
-                        mt_tensor_backward(t->deps[i], bwgrad);
+                        mt_tensor_backward(t->deps[i]->tensor, bwgrad);
                 }
         }
 }
@@ -560,14 +554,20 @@ int mt_is_tensor_eq(MTTensor *a, MTTensor *b) {
  * A helper to add dependency of a tensor (as a node in computation graph).
  * A tensor will be added as a dependency iff it requires grad.
  */
-inline void __mt_push_deps_at(MTTensor *t, MTTensor *dep, int at,
+inline void __mt_push_deps_at(MTTensor *t, MTTensor *t_dep, int at,
                               TensorBackwardFunc grad_fn) {
-        if (dep->req_grad) {
-                t->deps[at]  = dep;
-                dep->parent  = t;
-                dep->grad_fn = grad_fn;
+        if (t_dep->req_grad) {
+                Dependency *dep = __mt_newptr(Dependency, 1);
+                dep->tensor     = t_dep;
+                dep->grad_fn    = grad_fn;
+                t->deps[at]     = dep;
+                t_dep->parent   = t;
         } else {
-                t->deps[at] = NULL;
+                Dependency *dep = __mt_newptr(Dependency, 1);
+                dep->tensor     = t_dep;
+                dep->grad_fn    = grad_fn;
+                t->deps[at]     = dep;
+                t_dep->parent   = t;
         }
         t->ndeps++;
 }
@@ -709,13 +709,13 @@ MTTensor *__mt_grad_unbroadcast(MTTensor *grad, MTTensor *wrt_tensor) {
 /* addition operation */
 float __add(float a, float b) { return a + b; }
 
-MTTensor *__add_backward_a(MTTensor **prtdeps, MTTensor *grad) {
-        MTTensor *a = prtdeps[0];
+MTTensor *__add_backward_a(Dependency **prtdeps, MTTensor *grad) {
+        MTTensor *a = prtdeps[0]->tensor;
         return __mt_grad_unbroadcast(grad, a);
 }
 
-MTTensor *__add_backward_b(MTTensor **prtdeps, MTTensor *grad) {
-        MTTensor *b = prtdeps[1];
+MTTensor *__add_backward_b(Dependency **prtdeps, MTTensor *grad) {
+        MTTensor *b = prtdeps[1]->tensor;
         return __mt_grad_unbroadcast(grad, b);
 }
 
@@ -732,13 +732,13 @@ MTTensor *mt_tensor_add(MTTensor *a, MTTensor *b) {
 /* subtraction operation */
 inline float __sub(float a, float b) { return a - b; }
 
-MTTensor *__sub_backward_a(MTTensor **prtdeps, MTTensor *grad) {
-        MTTensor *a = prtdeps[0];
+MTTensor *__sub_backward_a(Dependency **prtdeps, MTTensor *grad) {
+        MTTensor *a = prtdeps[0]->tensor;
         return __mt_grad_unbroadcast(grad, a);
 }
 
-MTTensor *__sub_backward_b(MTTensor **prtdeps, MTTensor *grad) {
-        MTTensor *b = prtdeps[1];
+MTTensor *__sub_backward_b(Dependency **prtdeps, MTTensor *grad) {
+        MTTensor *b = prtdeps[1]->tensor;
         return __mt_grad_unbroadcast(mt_tensor_neg(grad), b);
 }
 
@@ -753,14 +753,14 @@ MTTensor *mt_tensor_sub(MTTensor *a, MTTensor *b) {
 /* element-wise multiplication operation */
 inline float __mul(float a, float b) { return a * b; }
 
-MTTensor *__mul_backward_a(MTTensor **prtdeps, MTTensor *grad) {
-        MTTensor *b = prtdeps[1];
+MTTensor *__mul_backward_a(Dependency **prtdeps, MTTensor *grad) {
+        MTTensor *b = prtdeps[1]->tensor;
         grad        = mt_tensor_mul(grad, b);
         return __mt_grad_unbroadcast(grad, b);
 }
 
-MTTensor *__mul_backward_b(MTTensor **prtdeps, MTTensor *grad) {
-        MTTensor *a = prtdeps[0];
+MTTensor *__mul_backward_b(Dependency **prtdeps, MTTensor *grad) {
+        MTTensor *a = prtdeps[0]->tensor;
         grad        = mt_tensor_mul(grad, a);
         return __mt_grad_unbroadcast(grad, a);
 }
@@ -776,7 +776,7 @@ MTTensor *mt_tensor_mul(MTTensor *a, MTTensor *b) {
 /* negation operation */
 inline float __neg(float x) { return -x; }
 
-MTTensor *__neg_backward(MTTensor **prtdeps, MTTensor *grad) {
+MTTensor *__neg_backward(Dependency **prtdeps, MTTensor *grad) {
         return mt_tensor_neg(grad);
 }
 
@@ -788,8 +788,8 @@ MTTensor *mt_tensor_neg(MTTensor *t) {
 }
 
 /* sum operation */
-MTTensor *__sum_backward(MTTensor **prtdeps, MTTensor *grad) {
-        MTTensor *self = prtdeps[0];
+MTTensor *__sum_backward(Dependency **prtdeps, MTTensor *grad) {
+        MTTensor *self = prtdeps[0]->tensor;
         MTTensor *ones = mt_new_tensor_full(grad->context, 1.0, self->shape,
                                             self->ndims);
         return mt_tensor_mul(grad, ones);

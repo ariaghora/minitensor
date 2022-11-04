@@ -215,9 +215,4 @@ float *mt_tensor_get_all_data_constrained(MTTensor *t, int **indices,
         exit(1);                    \
 })
 
-MTTensor *__mt_tensor_sum(MTTensor *t, int dim, int keepdim);
-MTTensor *__mt_tensor_add(MTTensor *a, MTTensor *b);
-MTTensor *__mt_tensor_sub(MTTensor *a, MTTensor *b);
-MTTensor *__mt_tensor_mul(MTTensor *a, MTTensor *b);
-MTTensor *__mt_tensor_neg(MTTensor *t);
 #endif

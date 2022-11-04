@@ -28,7 +28,7 @@ int main(void) {
                 mt_tensor_backward(msumsq, NULL);
                 x = mt_tensor_sub(x, mt_tensor_mul(lr, x->grad));
 
-                printf("%d sum of squared = %f; %d\n", i, mt_tensor_get_v(msumsq), ctx->ntracked);
+                printf("%d sum of squared = %f\n", i, mt_tensor_get_v(msumsq));
         }
 
         mt_context_free(ctx);

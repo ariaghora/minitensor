@@ -21,14 +21,11 @@ void run_simple_autograd_tests(Test *t) {
         /* test if at least one of operand requires grad, then the the result also requires grad */
         MTTensor *res = mt_tensor_add(x, y);
         mt_assert_true(t, res->req_grad, "test binop with grad", "res should require grad");
-        mt_assert_true(t, res->deps[0] == NULL, "test binop resulting lchild with grad", "res lchild should be NULL");
         mt_assert_true(t, res->deps[1]->tensor == y, "test binop resulting rchild with grad", "res rchild should be y");
 
         mt_tensor_disable_grad(y);
         res = mt_tensor_add(x, y);
         mt_assert_true(t, !res->req_grad, "test binop without grad", "res should NOT require grad");
-        mt_assert_true(t, res->deps[0] == NULL, "test binop resulting lchild without grad", "res lchild should be NULL");
-        mt_assert_true(t, res->deps[1] == NULL, "test binop resulting rchild without grad", "res rchild should be NULL");
 
         mt_context_free(ctx);
 }

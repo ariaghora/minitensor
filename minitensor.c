@@ -487,55 +487,6 @@ void mt_context_push_tensor(MTContext *ctx, MTTensor *t) {
         }
 }
 
-void mt_tensor_enable_grad(MTTensor *t) {
-        t->req_grad = 1;
-        mt_tensor_zero_grad(t);
-}
-
-void mt_tensor_disable_grad(MTTensor *t) {
-        t->req_grad = 0;
-        if (t->grad != NULL) {
-                mt_tensor_free(t->grad);
-                t->grad = NULL;
-                mt_context_defrag(t->context);
-        }
-}
-
-void mt_tensor_backward(MTTensor *t, MTTensor *grad) {
-        if (!t->req_grad) return;
-
-        if (grad == NULL) {
-                if (t->ndims == 0)
-                        grad = mt_new_scalar(t->context, 1.0);
-                else
-                        EXIT_WITH_ERROR("grad must be specified for non scalar tensor");
-        }
-        t->grad = __mt_tensor_add(t->grad,
-                                  grad);
-
-        /* recursively compute gradient of t's non-null children */
-        for (int i = 0; i < t->ndeps; i++) {
-                if (t->deps[i] != NULL) {
-                        if (t->deps[i]->grad_fn == NULL)
-                                EXIT_WITH_ERROR("fatal: no grad_fn defined");
-                        MTTensor *bwgrad = t->deps[i]->grad_fn(t->deps, grad);
-                        mt_tensor_backward(t->deps[i]->tensor, bwgrad);
-                }
-        }
-}
-
-void mt_remove_intermediary_nodes(MTContext *ctx) {
-        for (int i = 0; i < ctx->ntracked; i++) {
-                mt_tensor_free(ctx->tracked[i]);
-                ctx->tracked[i] = NULL;
-        }
-}
-
-void mt_tensor_zero_grad(MTTensor *t) {
-        mt_tensor_free(t->grad);
-        t->grad = mt_new_tensor_full(t->context, 0., t->shape, t->ndims);
-}
-
 void mt_tensor_print_debug(MTTensor *t) {
         printf("ndims   : %d\n", t->ndims);
         printf("ndeps   : %d\n", t->ndeps);
@@ -561,6 +512,12 @@ int mt_is_tensor_eq(MTTensor *a, MTTensor *b) {
 /**
  * MATH
  */
+
+MTTensor *__mt_tensor_sum(MTTensor *t, int dim, int keepdim);
+MTTensor *__mt_tensor_add(MTTensor *a, MTTensor *b);
+MTTensor *__mt_tensor_sub(MTTensor *a, MTTensor *b);
+MTTensor *__mt_tensor_mul(MTTensor *a, MTTensor *b);
+MTTensor *__mt_tensor_neg(MTTensor *t);
 
 /**
  * A helper to add dependency of a tensor (as a node in computation graph).
@@ -845,4 +802,56 @@ MTTensor *mt_tensor_sum(MTTensor *t, int dim, int keepdim) {
                 __mt_push_deps_at(res, t, 0, __sum_backward);
         }
         return res;
+}
+
+/**
+ * AUTOGRAD
+ */
+void mt_tensor_enable_grad(MTTensor *t) {
+        t->req_grad = 1;
+        mt_tensor_zero_grad(t);
+}
+
+void mt_tensor_disable_grad(MTTensor *t) {
+        t->req_grad = 0;
+        if (t->grad != NULL) {
+                mt_tensor_free(t->grad);
+                t->grad = NULL;
+                mt_context_defrag(t->context);
+        }
+}
+
+void mt_tensor_backward(MTTensor *t, MTTensor *grad) {
+        if (!t->req_grad) return;
+
+        if (grad == NULL) {
+                if (t->ndims == 0)
+                        grad = mt_new_scalar(t->context, 1.0);
+                else
+                        EXIT_WITH_ERROR("grad must be specified for non scalar tensor");
+        }
+        t->grad = __mt_tensor_add(t->grad,
+                                  grad);
+
+        /* recursively compute gradient of t's non-null children */
+        for (int i = 0; i < t->ndeps; i++) {
+                if (t->deps[i] != NULL) {
+                        if (t->deps[i]->grad_fn == NULL)
+                                EXIT_WITH_ERROR("fatal: no grad_fn defined");
+                        MTTensor *bwgrad = t->deps[i]->grad_fn(t->deps, grad);
+                        mt_tensor_backward(t->deps[i]->tensor, bwgrad);
+                }
+        }
+}
+
+void mt_remove_intermediary_nodes(MTContext *ctx) {
+        for (int i = 0; i < ctx->ntracked; i++) {
+                mt_tensor_free(ctx->tracked[i]);
+                ctx->tracked[i] = NULL;
+        }
+}
+
+void mt_tensor_zero_grad(MTTensor *t) {
+        mt_tensor_free(t->grad);
+        t->grad = mt_new_tensor_full(t->context, 0., t->shape, t->ndims);
 }

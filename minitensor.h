@@ -187,6 +187,8 @@ void mt_squeeze_at_dim(int targetdim, int *shape, int *strides,
  */
 void mt_context_defrag(MTContext *ctx);
 
+void mt_remove_intermediary_nodes(MTContext *ctx);
+
 /**
  * Access the tensor data with customized indices, shape, strides, and ndims
  * constraints. This is useful for especially to access data of a tensor
@@ -213,4 +215,9 @@ float *mt_tensor_get_all_data_constrained(MTTensor *t, int **indices,
         exit(1);                    \
 })
 
+MTTensor *__mt_tensor_sum(MTTensor *t, int dim, int keepdim);
+MTTensor *__mt_tensor_add(MTTensor *a, MTTensor *b);
+MTTensor *__mt_tensor_sub(MTTensor *a, MTTensor *b);
+MTTensor *__mt_tensor_mul(MTTensor *a, MTTensor *b);
+MTTensor *__mt_tensor_neg(MTTensor *t);
 #endif

@@ -12,19 +12,23 @@ int main(void) {
             1);                                   /* ndims */
         mt_tensor_enable_grad(x);
 
-        MTTensor *lr    = mt_new_scalar(ctx, 0.01);
-        MTTensor *sumsq = NULL;
-        MTTensor *sq    = NULL;
+        MTTensor *lr     = mt_new_scalar(ctx, 0.01);
+        MTTensor *sq     = NULL;
+        MTTensor *sumsq  = NULL;
+        MTTensor *msumsq = NULL;
+        MTTensor *scale  = mt_new_scalar(ctx, 1 / 6.0);
 
-        for (int i = 0; i < 9; i++) {
+        for (int i = 0; i < 30; i++) {
                 mt_tensor_zero_grad(x);
-                sq    = mt_tensor_sum(mt_tensor_mul(x, x), -1, 0);
-                sumsq = mt_tensor_sum(sq, -1, 0);
 
-                printf("SSE = %f\n", mt_tensor_get_v(sumsq));
+                sq     = mt_tensor_sum(mt_tensor_mul(x, x), -1, 0);
+                sumsq  = mt_tensor_sum(sq, -1, 0);
+                msumsq = mt_tensor_mul(sumsq, scale);
 
-                mt_tensor_backward(sumsq, NULL);
+                mt_tensor_backward(msumsq, NULL);
                 x = mt_tensor_sub(x, mt_tensor_mul(lr, x->grad));
+
+                printf("%d sum of squared = %f; %d\n", i, mt_tensor_get_v(msumsq), ctx->ntracked);
         }
 
         mt_context_free(ctx);

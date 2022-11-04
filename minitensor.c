@@ -253,6 +253,7 @@ MTTensor *mt_tensor_slice(MTContext *ctx, MTTensor *t, int dim,
                 newdata[i] = mt_tensor_get(t, idxs, t->ndims);
         }
         MTTensor *newtensor = mt_new_tensor(ctx, newdata, newshape, t->ndims);
+        newtensor->isleaf   = t->isleaf;
         mt_idxiterator_free(it), free(newshape), free(newindices), free(newdata);
 
         return newtensor;
@@ -378,24 +379,26 @@ BcastResult mt_broadcast_lr(MTTensor *left, MTTensor *right) {
 
         float *ldata = NULL;
         if (lshouldbc) {
-                ldata    = mt_tensor_get_all_data_constrained(left,
-                                                              lnewindices,
-                                                              lnewshape,
-                                                              ltmpstrides,
-                                                              outndims);
-                res.left = mt_new_tensor(left->context, ldata,
-                                         lnewshape, outndims);
+                ldata            = mt_tensor_get_all_data_constrained(left,
+                                                                      lnewindices,
+                                                                      lnewshape,
+                                                                      ltmpstrides,
+                                                                      outndims);
+                res.left         = mt_new_tensor(left->context, ldata,
+                                                 lnewshape, outndims);
+                res.left->isleaf = left->isleaf;
         }
 
         float *rdata = NULL;
         if (rshouldbc) {
-                rdata     = mt_tensor_get_all_data_constrained(right,
-                                                               rnewindices,
-                                                               rnewshape,
-                                                               rtmpstrides,
-                                                               outndims);
-                res.right = mt_new_tensor(right->context, rdata,
-                                          rnewshape, outndims);
+                rdata             = mt_tensor_get_all_data_constrained(right,
+                                                                       rnewindices,
+                                                                       rnewshape,
+                                                                       rtmpstrides,
+                                                                       outndims);
+                res.right         = mt_new_tensor(right->context, rdata,
+                                                  rnewshape, outndims);
+                res.right->isleaf = right->isleaf;
         }
 
         free(ldata), free(rdata);
@@ -426,16 +429,18 @@ void mt_tensor_free(MTTensor *t) {
                                                 t->context->ntracked);
                 if (idxtracker > -1) t->context->tracked[idxtracker] = NULL;
 
-                for (int i = 0; i < t->ndeps; i++)
+                for (int i = 0; i < t->ndeps; i++) {
                         free(t->deps[i]);
+                        t->deps[i] = NULL;
+                }
                 free(t->deps);
 
                 free(t->data);
                 free(t->shape);
                 free(t->strides);
                 __free_indices(t);
+                free(t);
         }
-        free(t);
 }
 
 /* remove NULLs in the tracked list */
@@ -505,8 +510,8 @@ void mt_tensor_backward(MTTensor *t, MTTensor *grad) {
                 else
                         EXIT_WITH_ERROR("grad must be specified for non scalar tensor");
         }
-        t->grad = mt_tensor_add(t->grad,
-                                grad);
+        t->grad = __mt_tensor_add(t->grad,
+                                  grad);
 
         /* recursively compute gradient of t's non-null children */
         for (int i = 0; i < t->ndeps; i++) {
@@ -516,6 +521,13 @@ void mt_tensor_backward(MTTensor *t, MTTensor *grad) {
                         MTTensor *bwgrad = t->deps[i]->grad_fn(t->deps, grad);
                         mt_tensor_backward(t->deps[i]->tensor, bwgrad);
                 }
+        }
+}
+
+void mt_remove_intermediary_nodes(MTContext *ctx) {
+        for (int i = 0; i < ctx->ntracked; i++) {
+                mt_tensor_free(ctx->tracked[i]);
+                ctx->tracked[i] = NULL;
         }
 }
 
@@ -547,7 +559,7 @@ int mt_is_tensor_eq(MTTensor *a, MTTensor *b) {
 }
 
 /**
- * MAAAATH
+ * MATH
  */
 
 /**
@@ -682,6 +694,7 @@ MTTensor *mt_tensor_ufunc(MTTensor *t, UFunc ufunc) {
                 mt_tensor_enable_grad(res);
         }
         free(resdata);
+        res->isleaf = 0;
         return res;
 }
 
@@ -697,11 +710,11 @@ MTTensor *__mt_grad_unbroadcast(MTTensor *grad, MTTensor *wrt_tensor) {
         /* sum out added dims */
         int ndims_added = grad->ndims - wrt_tensor->ndims;
         for (int i = 0; i < ndims_added; i++)
-                grad = mt_tensor_sum(grad, 0, 0);
+                grad = __mt_tensor_sum(grad, 0, 0);
         /* sum across broadcasted (but non-added dims) */
         for (int i = 0; i < wrt_tensor->ndims; i++) {
                 if (wrt_tensor->shape[i] == 1)
-                        grad = mt_tensor_sum(grad, i, 1);
+                        grad = __mt_tensor_sum(grad, i, 1);
         }
         return grad;
 }
@@ -719,13 +732,14 @@ MTTensor *__add_backward_b(Dependency **prtdeps, MTTensor *grad) {
         return __mt_grad_unbroadcast(grad, b);
 }
 
+MTTensor *__mt_tensor_add(MTTensor *a, MTTensor *b) {
+        return mt_tensor_bfunc(a, b, __add);
+}
 MTTensor *mt_tensor_add(MTTensor *a, MTTensor *b) {
-        MTTensor *res = mt_tensor_bfunc(a, b, __add);
+        MTTensor *res = __mt_tensor_add(a, b);
         if (a->req_grad || b->req_grad) mt_tensor_enable_grad(res);
-
         __mt_push_deps_at(res, a, 0, __add_backward_a);
         __mt_push_deps_at(res, b, 1, __add_backward_b);
-
         return res;
 }
 
@@ -739,11 +753,15 @@ MTTensor *__sub_backward_a(Dependency **prtdeps, MTTensor *grad) {
 
 MTTensor *__sub_backward_b(Dependency **prtdeps, MTTensor *grad) {
         MTTensor *b = prtdeps[1]->tensor;
-        return __mt_grad_unbroadcast(mt_tensor_neg(grad), b);
+        return __mt_grad_unbroadcast(__mt_tensor_neg(grad), b);
+}
+
+MTTensor *__mt_tensor_sub(MTTensor *a, MTTensor *b) {
+        return mt_tensor_bfunc(a, b, __sub);
 }
 
 MTTensor *mt_tensor_sub(MTTensor *a, MTTensor *b) {
-        MTTensor *res = mt_tensor_bfunc(a, b, __sub);
+        MTTensor *res = __mt_tensor_sub(a, b);
         if (a->req_grad || b->req_grad) mt_tensor_enable_grad(res);
         __mt_push_deps_at(res, a, 0, __sub_backward_a);
         __mt_push_deps_at(res, b, 1, __sub_backward_b);
@@ -755,18 +773,22 @@ inline float __mul(float a, float b) { return a * b; }
 
 MTTensor *__mul_backward_a(Dependency **prtdeps, MTTensor *grad) {
         MTTensor *b = prtdeps[1]->tensor;
-        grad        = mt_tensor_mul(grad, b);
+        grad        = __mt_tensor_mul(grad, b);
         return __mt_grad_unbroadcast(grad, b);
 }
 
 MTTensor *__mul_backward_b(Dependency **prtdeps, MTTensor *grad) {
         MTTensor *a = prtdeps[0]->tensor;
-        grad        = mt_tensor_mul(grad, a);
+        grad        = __mt_tensor_mul(grad, a);
         return __mt_grad_unbroadcast(grad, a);
 }
 
+MTTensor *__mt_tensor_mul(MTTensor *a, MTTensor *b) {
+        return mt_tensor_bfunc(a, b, __mul);
+}
+
 MTTensor *mt_tensor_mul(MTTensor *a, MTTensor *b) {
-        MTTensor *res = mt_tensor_bfunc(a, b, __mul);
+        MTTensor *res = __mt_tensor_mul(a, b);
         if (a->req_grad || b->req_grad) mt_tensor_enable_grad(res);
         __mt_push_deps_at(res, a, 0, __mul_backward_a);
         __mt_push_deps_at(res, b, 1, __mul_backward_b);
@@ -777,11 +799,14 @@ MTTensor *mt_tensor_mul(MTTensor *a, MTTensor *b) {
 inline float __neg(float x) { return -x; }
 
 MTTensor *__neg_backward(Dependency **prtdeps, MTTensor *grad) {
-        return mt_tensor_neg(grad);
+        return __mt_tensor_neg(grad);
 }
 
+MTTensor *__mt_tensor_neg(MTTensor *t) {
+        return mt_tensor_ufunc(t, __neg);
+}
 MTTensor *mt_tensor_neg(MTTensor *t) {
-        MTTensor *res = mt_tensor_ufunc(t, __neg);
+        MTTensor *res = __mt_tensor_neg(t);
         if (t->req_grad) mt_tensor_enable_grad(res);
         __mt_push_deps_at(res, t, 0, __neg_backward);
         return res;
@@ -792,11 +817,11 @@ MTTensor *__sum_backward(Dependency **prtdeps, MTTensor *grad) {
         MTTensor *self = prtdeps[0]->tensor;
         MTTensor *ones = mt_new_tensor_full(grad->context, 1.0, self->shape,
                                             self->ndims);
-        return mt_tensor_mul(grad, ones);
+        return __mt_tensor_mul(grad, ones);
 }
 
-MTTensor *mt_tensor_sum(MTTensor *t, int dim, int keepdim) {
-        if (dim > -1) return mt_tensor_reduce(t, dim, mt_tensor_add, keepdim);
+MTTensor *__mt_tensor_sum(MTTensor *t, int dim, int keepdim) {
+        if (dim > -1) return mt_tensor_reduce(t, dim, __mt_tensor_add, keepdim);
 
         float sum = 0;
         for (long i = 0; i < t->datalen; i++)
@@ -810,8 +835,11 @@ MTTensor *mt_tensor_sum(MTTensor *t, int dim, int keepdim) {
                 for (int i = 0; i < t->ndims; i++) shape[i] = 1;
                 res = mt_new_tensor(t->context, Arr(float, sum), shape, t->ndims);
         }
-
         res->isleaf = 0;
+        return res;
+}
+MTTensor *mt_tensor_sum(MTTensor *t, int dim, int keepdim) {
+        MTTensor *res = __mt_tensor_sum(t, dim, keepdim);
         if (t->req_grad) {
                 mt_tensor_enable_grad(res);
                 __mt_push_deps_at(res, t, 0, __sum_backward);

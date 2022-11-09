@@ -128,15 +128,17 @@ MTTensor  *mt_tensor_slice(MTContext *ctx, MTTensor *t, int dim,
                            int *index, int indexlen);
 MTTensor  *mt_tensor_sum(MTTensor *t, int dim, int keepdims);
 void       mt_tensor_free(MTTensor *t);
+MTTensor  *mt_tensor_reduce(MTTensor *t, int dim, BFunc bfunc,
+                            int keepdims);
 MTTensor  *mt_tensor_bfunc(MTTensor *a, MTTensor *b, BFunc bfunc);
 MTTensor  *mt_tensor_ufunc(MTTensor *t, UFunc ufunc);
 MTTensor  *mt_tensor_add(MTTensor *a, MTTensor *b);
 MTTensor  *mt_tensor_sub(MTTensor *a, MTTensor *b);
 MTTensor  *mt_tensor_mul(MTTensor *a, MTTensor *b);
+MTTensor  *mt_tensor_matmul(MTTensor *a, MTTensor *b);
 MTTensor  *mt_tensor_div(MTTensor *a, MTTensor *b);
 MTTensor  *mt_tensor_neg(MTTensor *t);
-MTTensor  *mt_tensor_reduce(MTTensor *t, int dim, BFunc bfunc,
-                            int keepdims);
+MTTensor  *mt_tensor_transpose(MTTensor *t);
 MTContext *mt_new_context(void);
 void       mt_context_push_tensor(MTContext *ctx, MTTensor *t);
 void       mt_context_free(MTContext *ctx);

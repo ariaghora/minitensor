@@ -517,7 +517,9 @@ MTTensor *__mt_tensor_sum(MTTensor *t, int dim, int keepdim);
 MTTensor *__mt_tensor_add(MTTensor *a, MTTensor *b);
 MTTensor *__mt_tensor_sub(MTTensor *a, MTTensor *b);
 MTTensor *__mt_tensor_mul(MTTensor *a, MTTensor *b);
+MTTensor *__mt_tensor_matmul(MTTensor *a, MTTensor *b);
 MTTensor *__mt_tensor_neg(MTTensor *t);
+MTTensor *__mt_tensor_transpose(MTTensor *t);
 
 /**
  * A helper to add dependency of a tensor (as a node in computation graph).
@@ -756,6 +758,56 @@ MTTensor *mt_tensor_mul(MTTensor *a, MTTensor *b) {
         return res;
 }
 
+/* matrix multiplication operation*/
+inline void __mt_axpy(float *resdata, MTTensor *a, MTTensor *b,
+                      int i, int j, int k) {
+        resdata[i * b->shape[1] + j] +=
+            mt_tensor_get_2(a, i, k) * mt_tensor_get_2(b, k, j);
+}
+
+MTTensor *__mt_tensor_matmul(MTTensor *a, MTTensor *b) {
+        if ((a->ndims != 2) || (b->ndims != 2))
+                EXIT_WITH_ERROR("both a and b must be 2-tensor");
+        if (a->shape[1] != b->shape[0])
+                EXIT_WITH_ERROR("the shapes of a and b are incompatible");
+
+        long   resdatalen = a->shape[0] * b->shape[1];
+        float *resdata    = __mt_newptr(float, resdatalen);
+
+        for (long i = 0; i < resdatalen; i++) resdata[i] = 0.0;
+
+        for (int i = 0; i < a->shape[0]; i++) {
+                for (int j = 0; j < b->shape[1]; j++) {
+                        for (int k = 0; k < a->shape[1]; k++) {
+                                __mt_axpy(resdata, a, b, i, j, k);
+                        }
+                }
+        }
+
+        MTTensor *res = mt_new_tensor(a->context, resdata,
+                                      Arr(int, a->shape[0], b->shape[1]), 2);
+        free(resdata);
+        return res;
+}
+
+MTTensor *__matmul_backward_a(Dependency **prtdeps, MTTensor *grad) {
+        MTTensor *b = prtdeps[1]->tensor;
+        return __mt_tensor_matmul(grad, __mt_tensor_transpose(b));
+}
+
+MTTensor *__matmul_backward_b(Dependency **prtdeps, MTTensor *grad) {
+        MTTensor *a = prtdeps[0]->tensor;
+        return __mt_tensor_matmul(__mt_tensor_transpose(a), grad);
+}
+
+MTTensor *mt_tensor_matmul(MTTensor *a, MTTensor *b) {
+        MTTensor *res = __mt_tensor_matmul(a, b);
+        if (a->req_grad || b->req_grad) mt_tensor_enable_grad(res);
+        __mt_push_deps_at(res, a, 0, __matmul_backward_a);
+        __mt_push_deps_at(res, b, 1, __matmul_backward_b);
+        return res;
+}
+
 /* negation operation */
 inline float __neg(float x) { return -x; }
 
@@ -770,6 +822,36 @@ MTTensor *mt_tensor_neg(MTTensor *t) {
         MTTensor *res = __mt_tensor_neg(t);
         if (t->req_grad) mt_tensor_enable_grad(res);
         __mt_push_deps_at(res, t, 0, __neg_backward);
+        return res;
+}
+
+/* transpose operation */
+MTTensor *__mt_tensor_transpose(MTTensor *t) {
+        int **indices_tr = __mt_newptr(int *, t->ndims);
+        for (int i = t->ndims; i > 0; i--) {
+                indices_tr[t->ndims - i] =
+                    t->indices[i - 1];
+        }
+        int shape_tr[t->ndims];
+        for (int i = t->ndims; i > 0; i--) {
+                shape_tr[t->ndims - i] = t->shape[i - 1];
+        }
+        int strides_tr[t->ndims];
+        for (int i = t->ndims; i > 0; i--) {
+                strides_tr[t->ndims - i] = t->strides[i - 1];
+        }
+
+        float *transposed_data =
+            mt_tensor_get_all_data_constrained(t, indices_tr, shape_tr,
+                                               strides_tr, t->ndims);
+        MTTensor *res = mt_new_tensor(t->context, transposed_data,
+                                      shape_tr, t->ndims);
+        free(transposed_data);
+        free(indices_tr);
+        return res;
+}
+MTTensor *mt_tensor_transpose(MTTensor *t) {
+        MTTensor *res = __mt_tensor_transpose(t);
         return res;
 }
 

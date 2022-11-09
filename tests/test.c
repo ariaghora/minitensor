@@ -20,7 +20,8 @@ void run_tests(void) {
         run_tensor_negation_tests(&t);
         run_tensor_sum_tests(&t);
         run_tensor_el_multiplication_tests(&t);
-        run_autograd_neg_tests(&t);
+        run_tensor_matrix_multiplication_tests(&t);
+        run_tensor_transpose_tests(&t);
 #endif
 
 #ifndef SKIP_AUTOGRAD_TESTS
@@ -28,7 +29,9 @@ void run_tests(void) {
         run_autograd_backward_tests(&t);
         run_tensor_reduce_tests(&t);
         run_autograd_add_tests(&t);
+        run_autograd_neg_tests(&t);
         run_autograd_add_same_tensors_tests(&t);
+        run_autograd_matmul_tests(&t);
 #endif
 
         printf("========================================================================\n");

@@ -148,6 +148,18 @@ void run_tensor_negation_tests(Test *t) {
         mt_context_free(ctx);
 }
 
+void run_tensor_transpose_tests(Test *t) {
+        MTContext *ctx = mt_new_context();
+        MTTensor  *x   = mt_new_tensor(ctx, Arr(float, 1, 2, 3, 4, 5, 6), Arr(int, 3, 2), 2);
+        MTTensor  *x_t = mt_new_tensor(ctx, Arr(float, 1, 3, 5, 2, 4, 6), Arr(int, 2, 3), 2);
+        mt_assert_true(t,
+                       mt_is_tensor_eq(mt_tensor_transpose(x), x_t),
+                       "test tensor transpose",
+                       "should be {{1, 3, 5}, {2, 4, 6}}");
+
+        mt_context_free(ctx);
+}
+
 float add(float x, float y) { return x + y; }
 void  run_tensor_reduce_tests(Test *t) {
          MTContext *ctx     = mt_new_context();
@@ -161,4 +173,17 @@ void  run_tensor_reduce_tests(Test *t) {
          mt_assert_true(t, mt_is_tensor_eq(xslice2, exp2), "test tensor reduce along axis 1 with squeeze", "the result should be {3, 7, 11}");
 
          mt_context_free(ctx);
+}
+
+void run_tensor_matrix_multiplication_tests(Test *t) {
+        MTContext *ctx = mt_new_context();
+        MTTensor  *x   = mt_new_tensor(ctx, Arr(float, 1, 2, 3, 4, 5, 6), Arr(int, 3, 2), 2);
+        MTTensor  *y   = mt_new_tensor(ctx, Arr(float, 1, 1, 1, 1), Arr(int, 2, 2), 2);
+        MTTensor  *res = mt_new_tensor(ctx, Arr(float, 3, 3, 7, 7, 11, 11), Arr(int, 3, 2), 2);
+        mt_assert_true(
+            t,
+            mt_is_tensor_eq(mt_tensor_matmul(x, y), res),
+            "test matmul 1",
+            "should be {{3, 3}, {7, 7}, {11, 11}}");
+        mt_context_free(ctx);
 }

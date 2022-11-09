@@ -135,6 +135,31 @@ void run_autograd_add_same_tensors_tests(Test *t) {
         mt_context_free(ctx);
 }
 
+void run_autograd_matmul_tests(Test *t) {
+        MTContext *ctx = mt_new_context();
+
+        MTTensor *x = mt_new_tensor(ctx, Arr(float, 1, 2, 3, 4, 5, 6), Arr(int, 3, 2), 2);
+        MTTensor *y = mt_new_tensor(ctx, Arr(float, 10, 20), Arr(int, 2, 1), 2);
+        mt_tensor_enable_grad(x), mt_tensor_enable_grad(y);
+        MTTensor *z    = mt_tensor_matmul(x, y);
+        MTTensor *grad = mt_new_tensor(ctx, Arr(float, -1, -2, -3), Arr(int, 3, 1), 2);
+        mt_tensor_backward(z, grad);
+
+        mt_assert_true(
+            t,
+            mt_is_tensor_eq(x->grad, mt_tensor_matmul(grad, mt_tensor_transpose(y))),
+            "test matmul grad 1",
+            "-");
+
+        mt_assert_true(
+            t,
+            mt_is_tensor_eq(y->grad, mt_tensor_matmul(mt_tensor_transpose(x), grad)),
+            "test matmul grad 1",
+            "-");
+
+        mt_context_free(ctx);
+}
+
 void run_autograd_neg_tests(Test *t) {
         MTContext *ctx = mt_new_context();
         MTTensor  *x   = mt_new_tensor(ctx, Arr(float, 1, 2, 3), Arr(int, 3), 1);

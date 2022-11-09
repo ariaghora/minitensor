@@ -37,5 +37,6 @@ void run_autograd_backward_tests(Test *);
 void run_tensor_reduce_tests(Test *t);
 void run_autograd_add_tests(Test *t);
 void run_autograd_add_same_tensors_tests(Test *t);
-void run_autograd_neg_tests(Test *t);
 void run_autograd_matmul_tests(Test *t);
+void run_autograd_neg_tests(Test *t);
+void run_autograd_log_tests(Test *t);

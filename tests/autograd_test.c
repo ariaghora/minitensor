@@ -1,3 +1,4 @@
+#include <math.h>
 #include <stdio.h>
 
 #include "../minitensor.h"
@@ -185,6 +186,26 @@ void run_autograd_neg_tests(Test *t) {
             mt_is_tensor_eq(x->grad, mt_new_tensor(ctx, Arr(float, -1, -1, -1), Arr(int, 3), 1)),
             "test grad sum of negation",
             "should be {-1, -1, -1}");
+
+        mt_context_free(ctx);
+}
+
+void run_autograd_log_tests(Test *t) {
+        MTContext *ctx = mt_new_context();
+        MTTensor  *x   = mt_new_tensor(ctx, Arr(float, 1, 2, 3), Arr(int, 3), 1);
+        mt_tensor_enable_grad(x);
+
+        MTTensor *res = mt_tensor_log(x);
+
+        /* negation */
+        mt_tensor_backward(res, mt_new_tensor(ctx, Arr(float, -1, -1, -1), Arr(int, 3), 1));
+        mt_assert_true(
+            t,
+            mt_is_tensor_eq(x->grad, mt_new_tensor(ctx,
+                                                   Arr(float, -1.0 / 1, -1.0 / 2, -1.0 / 3),
+                                                   Arr(int, 3), 1)),
+            "test grad log",
+            "should be {-1.00..., -0.50..., -0.33...}");
 
         mt_context_free(ctx);
 }

@@ -1,5 +1,5 @@
 CC = gcc 
-CFLAGS = -std=c99 -Wall -g -O3 -Werror -Wstrict-prototypes
+CFLAGS = -std=c99 -Wall -g -O3 -Werror -Wstrict-prototypes -lm
 SOURCES = ../minitensor.c 
 TEST_SOURCE = ./*.c
 VGFLAGS = --track-origins=yes --leak-check=full --show-leak-kinds=all -s

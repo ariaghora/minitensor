@@ -1,5 +1,6 @@
 #include "minitensor.h"
 
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -818,10 +819,30 @@ MTTensor *__neg_backward(Dependency **prtdeps, MTTensor *grad) {
 MTTensor *__mt_tensor_neg(MTTensor *t) {
         return mt_tensor_ufunc(t, __neg);
 }
+
 MTTensor *mt_tensor_neg(MTTensor *t) {
         MTTensor *res = __mt_tensor_neg(t);
         if (t->req_grad) mt_tensor_enable_grad(res);
         __mt_push_deps_at(res, t, 0, __neg_backward);
+        return res;
+}
+
+/* (natural) logarithm operation */
+inline float __mt_log(float x) { return logf(x); }
+MTTensor    *__mt_tensor_log(MTTensor *t) {
+           return mt_tensor_ufunc(t, __mt_log);
+}
+
+inline float __div(float x, float y) { return x / y; }
+MTTensor    *__log_backward(Dependency **prtdeps, MTTensor *grad) {
+           MTTensor *t = prtdeps[0]->tensor;
+           return mt_tensor_bfunc(grad, t, __div);
+}
+
+MTTensor *mt_tensor_log(MTTensor *t) {
+        MTTensor *res = __mt_tensor_log(t);
+        if (t->req_grad) mt_tensor_enable_grad(res);
+        __mt_push_deps_at(res, t, 0, __log_backward);
         return res;
 }
 

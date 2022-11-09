@@ -29,9 +29,10 @@ void run_tests(void) {
         run_autograd_backward_tests(&t);
         run_tensor_reduce_tests(&t);
         run_autograd_add_tests(&t);
-        run_autograd_neg_tests(&t);
         run_autograd_add_same_tensors_tests(&t);
         run_autograd_matmul_tests(&t);
+        run_autograd_neg_tests(&t);
+        run_autograd_log_tests(&t);
 #endif
 
         printf("========================================================================\n");

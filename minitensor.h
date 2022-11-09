@@ -135,7 +135,7 @@ MTTensor  *mt_tensor_sub(MTTensor *a, MTTensor *b);
 MTTensor  *mt_tensor_mul(MTTensor *a, MTTensor *b);
 MTTensor  *mt_tensor_div(MTTensor *a, MTTensor *b);
 MTTensor  *mt_tensor_neg(MTTensor *t);
-MTTensor  *mt_tensor_reduce(MTTensor *t, int dim, TensorBFunc bfunc,
+MTTensor  *mt_tensor_reduce(MTTensor *t, int dim, BFunc bfunc,
                             int keepdims);
 MTContext *mt_new_context(void);
 void       mt_context_push_tensor(MTContext *ctx, MTTensor *t);

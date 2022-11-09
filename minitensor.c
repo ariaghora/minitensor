@@ -546,15 +546,19 @@ inline void __mt_push_deps_at(MTTensor *t, MTTensor *t_dep, int at,
  * with reduce function `bfunc`. For example, if dim=0 and bfunc=mt_tensor_add,
  * then it is equivalent to summing the tensor on the first dimension.
  */
-MTTensor *mt_tensor_reduce(MTTensor *t, int dim, TensorBFunc bfunc,
+MTTensor *mt_tensor_reduce(MTTensor *t, int dim, BFunc bfunc,
                            int keepdims) {
         MTTensor *res = mt_tensor_slice(t->context, t, dim, Arr(int, 0), 1);
+
         for (long i = 1; i < t->shape[dim]; i++) {
-                MTTensor *sl  = mt_tensor_slice(t->context, t,
-                                                dim, Arr(int, i), 1);
-                MTTensor *tmp = res;
-                res           = bfunc(res, sl);
-                mt_tensor_free(tmp);
+                MTTensor *sl = mt_tensor_slice(t->context, t,
+                                               dim, Arr(int, i), 1);
+
+                float *sldata    = sl->data;
+                long   sldatalen = sl->datalen;
+                for (long j = 0; j < sldatalen; j++)
+                        res->data[j] = bfunc(res->data[j], sldata[j]);
+
                 mt_tensor_free(sl);
         }
         if (!keepdims) {
@@ -778,7 +782,7 @@ MTTensor *__sum_backward(Dependency **prtdeps, MTTensor *grad) {
 }
 
 MTTensor *__mt_tensor_sum(MTTensor *t, int dim, int keepdim) {
-        if (dim > -1) return mt_tensor_reduce(t, dim, __mt_tensor_add, keepdim);
+        if (dim > -1) return mt_tensor_reduce(t, dim, __add, keepdim);
 
         float sum = 0;
         for (long i = 0; i < t->datalen; i++)

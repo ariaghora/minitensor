@@ -148,16 +148,17 @@ void run_tensor_negation_tests(Test *t) {
         mt_context_free(ctx);
 }
 
-void run_tensor_reduce_tests(Test *t) {
-        MTContext *ctx     = mt_new_context();
-        MTTensor  *x       = mt_new_tensor(ctx, Arr(float, 1, 2, 3, 4, 5, 6), Arr(int, 3, 2), 2);
-        MTTensor  *xslice1 = mt_tensor_reduce(x, 0, mt_tensor_add, 1);
-        MTTensor  *xslice2 = mt_tensor_reduce(x, 1, mt_tensor_add, 0);
-        MTTensor  *exp1    = mt_new_tensor(ctx, Arr(float, 9, 12), Arr(int, 1, 2), 2);
-        MTTensor  *exp2    = mt_new_tensor(ctx, Arr(float, 3, 7, 11), Arr(int, 3), 1);
+float add(float x, float y) { return x + y; }
+void  run_tensor_reduce_tests(Test *t) {
+         MTContext *ctx     = mt_new_context();
+         MTTensor  *x       = mt_new_tensor(ctx, Arr(float, 1, 2, 3, 4, 5, 6), Arr(int, 3, 2), 2);
+         MTTensor  *xslice1 = mt_tensor_reduce(x, 0, add, 1);
+         MTTensor  *xslice2 = mt_tensor_reduce(x, 1, add, 0);
+         MTTensor  *exp1    = mt_new_tensor(ctx, Arr(float, 9, 12), Arr(int, 1, 2), 2);
+         MTTensor  *exp2    = mt_new_tensor(ctx, Arr(float, 3, 7, 11), Arr(int, 3), 1);
 
-        mt_assert_true(t, mt_is_tensor_eq(xslice1, exp1), "test tensor reduce along axis 0", "the result should be {{9, 12}}");
-        mt_assert_true(t, mt_is_tensor_eq(xslice2, exp2), "test tensor reduce along axis 1 with squeeze", "the result should be {3, 7, 11}");
+         mt_assert_true(t, mt_is_tensor_eq(xslice1, exp1), "test tensor reduce along axis 0", "the result should be {{9, 12}}");
+         mt_assert_true(t, mt_is_tensor_eq(xslice2, exp2), "test tensor reduce along axis 1 with squeeze", "the result should be {3, 7, 11}");
 
-        mt_context_free(ctx);
+         mt_context_free(ctx);
 }

@@ -18,7 +18,7 @@ int main(void) {
         MTTensor *msumsq = NULL;
         MTTensor *scale  = mt_new_scalar(ctx, 1 / 6.0);
 
-        for (int i = 0; i < 30; i++) {
+        for (int i = 0; i < 100; i++) {
                 mt_tensor_zero_grad(x);
 
                 sq     = mt_tensor_sum(mt_tensor_mul(x, x), -1, 0);

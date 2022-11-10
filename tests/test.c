@@ -33,6 +33,7 @@ void run_tests(void) {
         run_autograd_matmul_tests(&t);
         run_autograd_neg_tests(&t);
         run_autograd_log_tests(&t);
+        run_autograd_relu_tests(&t);
 #endif
 
         printf("========================================================================\n");

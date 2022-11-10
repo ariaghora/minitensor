@@ -528,19 +528,11 @@ MTTensor *__mt_tensor_transpose(MTTensor *t);
  */
 inline void __mt_push_deps_at(MTTensor *t, MTTensor *t_dep, int at,
                               TensorBackwardFunc grad_fn) {
-        if (t_dep->req_grad) {
-                Dependency *dep = __mt_newptr(Dependency, 1);
-                dep->tensor     = t_dep;
-                dep->grad_fn    = grad_fn;
-                t->deps[at]     = dep;
-                t_dep->parent   = t;
-        } else {
-                Dependency *dep = __mt_newptr(Dependency, 1);
-                dep->tensor     = t_dep;
-                dep->grad_fn    = grad_fn;
-                t->deps[at]     = dep;
-                t_dep->parent   = t;
-        }
+        Dependency *dep = __mt_newptr(Dependency, 1);
+        dep->tensor     = t_dep;
+        dep->grad_fn    = grad_fn;
+        t->deps[at]     = dep;
+        t_dep->parent   = t;
         t->ndeps++;
 }
 
@@ -843,6 +835,22 @@ MTTensor *mt_tensor_log(MTTensor *t) {
         MTTensor *res = __mt_tensor_log(t);
         if (t->req_grad) mt_tensor_enable_grad(res);
         __mt_push_deps_at(res, t, 0, __log_backward);
+        return res;
+}
+
+/* relu operation */
+inline float __relu(float x) { return __max(0, x); }
+inline float __drelu(float t, float g) { return t > 0 ? g : 0; }
+
+MTTensor *__relu_backward(Dependency **prtdeps, MTTensor *grad) {
+        MTTensor *t = prtdeps[0]->tensor;
+        return mt_tensor_bfunc(t, grad, __drelu);
+}
+
+MTTensor *mt_tensor_relu(MTTensor *t) {
+        MTTensor *res = mt_tensor_ufunc(t, __relu);
+        if (t->req_grad) mt_tensor_enable_grad(res);
+        __mt_push_deps_at(res, t, 0, __relu_backward);
         return res;
 }
 

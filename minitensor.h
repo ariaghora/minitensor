@@ -139,6 +139,7 @@ MTTensor  *mt_tensor_matmul(MTTensor *a, MTTensor *b);
 MTTensor  *mt_tensor_div(MTTensor *a, MTTensor *b);
 MTTensor  *mt_tensor_neg(MTTensor *t);
 MTTensor  *mt_tensor_log(MTTensor *t);
+MTTensor  *mt_tensor_relu(MTTensor *t);
 MTTensor  *mt_tensor_transpose(MTTensor *t);
 MTContext *mt_new_context(void);
 void       mt_context_push_tensor(MTContext *ctx, MTTensor *t);

@@ -197,7 +197,6 @@ void run_autograd_log_tests(Test *t) {
 
         MTTensor *res = mt_tensor_log(x);
 
-        /* negation */
         mt_tensor_backward(res, mt_new_tensor(ctx, Arr(float, -1, -1, -1), Arr(int, 3), 1));
         mt_assert_true(
             t,
@@ -206,6 +205,49 @@ void run_autograd_log_tests(Test *t) {
                                                    Arr(int, 3), 1)),
             "test grad log",
             "should be {-1.00..., -0.50..., -0.33...}");
+
+        mt_context_free(ctx);
+}
+
+void run_autograd_relu_tests(Test *t) {
+        MTContext *ctx = mt_new_context();
+        MTTensor  *x   = mt_new_tensor(ctx, Arr(float, -1, 2, 3), Arr(int, 3), 1);
+        mt_tensor_enable_grad(x);
+
+        MTTensor *res = mt_tensor_relu(x);
+
+        mt_tensor_backward(res, mt_new_tensor(ctx, Arr(float, 1, 1, 1), Arr(int, 3), 1));
+        mt_assert_true(
+            t,
+            mt_is_tensor_eq(x->grad, mt_new_tensor(ctx,
+                                                   Arr(float, 0, 1, 1),
+                                                   Arr(int, 3), 1)),
+            "test grad relu",
+            "should be {0, 1, 1}");
+
+        /* relu(x) + x */
+        mt_tensor_zero_grad(x);
+        res = mt_tensor_add(mt_tensor_relu(x), x);
+        mt_tensor_backward(res, mt_new_tensor(ctx, Arr(float, 1, 1, 1), Arr(int, 3), 1));
+        mt_assert_true(
+            t,
+            mt_is_tensor_eq(x->grad, mt_new_tensor(ctx,
+                                                   Arr(float, 1, 2, 2),
+                                                   Arr(int, 3), 1)),
+            "test grad relu(x)+x",
+            "should be {1, 2, 2}");
+
+        /* sum(relu(x) + x) */
+        mt_tensor_zero_grad(x);
+        res = mt_tensor_sum(mt_tensor_add(mt_tensor_relu(x), x), -1, 0);
+        mt_tensor_backward(res, mt_new_scalar(ctx, 0.5));
+        mt_assert_true(
+            t,
+            mt_is_tensor_eq(x->grad, mt_new_tensor(ctx,
+                                                   Arr(float, 0.5, 1, 1),
+                                                   Arr(int, 3), 1)),
+            "test grad sum(relu(x)+x)",
+            "should be {0.5, 1, 1}");
 
         mt_context_free(ctx);
 }

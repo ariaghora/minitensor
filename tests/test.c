@@ -30,6 +30,7 @@ void run_tests(void) {
         run_tensor_reduce_tests(&t);
         run_autograd_add_tests(&t);
         run_autograd_add_same_tensors_tests(&t);
+        run_autograd_division_tests(&t);
         run_autograd_matmul_tests(&t);
         run_autograd_neg_tests(&t);
         run_autograd_log_tests(&t);

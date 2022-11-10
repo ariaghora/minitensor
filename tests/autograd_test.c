@@ -136,6 +136,41 @@ void run_autograd_add_same_tensors_tests(Test *t) {
         mt_context_free(ctx);
 }
 
+void run_autograd_division_tests(Test *t) {
+        MTContext *ctx = mt_new_context();
+
+        MTTensor *x = mt_new_tensor(ctx, Arr(float, 2, 4, 6), Arr(int, 3), 1);
+        MTTensor *y = mt_new_scalar(ctx, 2);
+        mt_tensor_enable_grad(x), mt_tensor_enable_grad(y);
+
+        MTTensor *z    = mt_tensor_div(x, y);
+        MTTensor *grad = mt_new_tensor(ctx, Arr(float, 1, 1, 1), Arr(int, 3), 1);
+        mt_tensor_backward(z, grad);
+
+        MTTensor *x_grad = mt_new_tensor(ctx, Arr(float, 0.5, 0.5, 0.5), Arr(int, 3), 1);
+        MTTensor *y_grad = mt_new_scalar(ctx, -3);
+
+        mt_assert_true(
+            t,
+            mt_is_tensor_eq(z, mt_new_tensor(ctx, Arr(float, 1, 2, 3), Arr(int, 3), 1)),
+            "test div result",
+            "it should be {1, 2 ,3}");
+
+        mt_assert_true(
+            t,
+            mt_is_tensor_eq(x->grad, x_grad),
+            "test div grad 1",
+            "it should be {.5, .5, .5}");
+
+        mt_assert_true(
+            t,
+            mt_is_tensor_eq(y->grad, y_grad),
+            "test div grad 2",
+            "it should be -3");
+
+        mt_context_free(ctx);
+}
+
 void run_autograd_matmul_tests(Test *t) {
         MTContext *ctx = mt_new_context();
 

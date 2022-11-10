@@ -493,7 +493,11 @@ void mt_tensor_print_debug(MTTensor *t) {
         printf("strides : "), __printarr(t->strides, t->ndims, "%d"), printf("\n");
         printf("data \n");
         printf("  - datalen : %ld\n", t->datalen);
-        printf("  - content : "), __printarr(t->data, t->datalen, "%.2f");
+        printf("  - content : ");
+        if (t->ndims > 0)
+                __printarr(t->data, t->datalen, "%.2f");
+        else
+                printf("%f", mt_tensor_get_v(t));
         printf("\n");
         printf("\n");
 }
@@ -810,8 +814,32 @@ MTTensor *__mt_tensor_div(MTTensor *a, MTTensor *b) {
         return mt_tensor_bfunc(a, b, __div);
 }
 
+MTTensor *__div_backward_a(Dependency **prtdeps, MTTensor *grad) {
+        MTTensor *a = prtdeps[0]->tensor;
+        MTTensor *b = prtdeps[1]->tensor;
+        grad        = __mt_tensor_div(grad, b);
+        return __mt_grad_unbroadcast(grad, a);
+}
+
+MTTensor *__div_backward_b(Dependency **prtdeps, MTTensor *grad) {
+        MTTensor *a = prtdeps[0]->tensor;
+        MTTensor *b = prtdeps[1]->tensor;
+
+        /* unbroadcast((-grad * a) / (b * b)) w.r.t. b */
+        grad = __mt_tensor_mul(__mt_tensor_neg(grad), a);
+        grad = __mt_tensor_div(grad, __mt_tensor_mul(b, b));
+        return __mt_grad_unbroadcast(grad, b);
+}
+
+inline float __recip(float x) { return 1 / x; }
+
 MTTensor *mt_tensor_div(MTTensor *a, MTTensor *b) {
         MTTensor *res = __mt_tensor_div(a, b);
+        if (a->req_grad || b->req_grad) mt_tensor_enable_grad(res);
+        __mt_push_deps_at(res, a, 0, __div_backward_a);
+        __mt_push_deps_at(res, b, 1, __div_backward_b);
+
+        // MTTensor *res = mt_tensor_mul(a, mt_tensor_ufunc(b, __recip));
         return res;
 }
 

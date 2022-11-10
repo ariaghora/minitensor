@@ -1,8 +1,16 @@
 /**
- * Minitensor -- A tensor manipulation library.
+ * Minitensor -- A tensor manipulation library
  *
  * Copyright (c) 2022, Aria Ghora Prabono <hello@ghora.net>
  * All rights reserved.
+ *
+ * Minitensor aims to provide tensor manipulation functionality with very
+ * minimum external dependencies. Pure C99.
+ *
+ * It supports:
+ *      - Autograd
+ *      - Tensor broadcasting
+ *
  */
 
 #ifndef MINITENSOR_H_
@@ -224,4 +232,4 @@ float *mt_tensor_get_all_data_constrained(MTTensor *t, int **indices,
 /*  inline expression literal for stack-allocated array */
 #define Arr(type, ...) ((type[]){__VA_ARGS__})
 
-#endif
+#endif  // ifndef MINITENSOR_H_

@@ -509,16 +509,23 @@ int mt_is_tensor_eq(MTTensor *a, MTTensor *b) {
 }
 
 /**
- * MATH
+ * Math implementation
  */
 
-MTTensor *__mt_tensor_sum(MTTensor *t, int dim, int keepdim);
-MTTensor *__mt_tensor_add(MTTensor *a, MTTensor *b);
-MTTensor *__mt_tensor_sub(MTTensor *a, MTTensor *b);
-MTTensor *__mt_tensor_mul(MTTensor *a, MTTensor *b);
-MTTensor *__mt_tensor_matmul(MTTensor *a, MTTensor *b);
-MTTensor *__mt_tensor_neg(MTTensor *t);
-MTTensor *__mt_tensor_transpose(MTTensor *t);
+inline float __add(float a, float b) { return a + b; }
+inline float __sub(float a, float b) { return a - b; }
+inline float __mul(float a, float b) { return a * b; }
+inline float __div(float a, float b) { return a / b; }
+inline float __neg(float x) { return -x; }
+inline float __mt_log(float x) { return logf(x); }
+MTTensor    *__mt_tensor_sum(MTTensor *t, int dim, int keepdim);
+MTTensor    *__mt_tensor_add(MTTensor *a, MTTensor *b);
+MTTensor    *__mt_tensor_sub(MTTensor *a, MTTensor *b);
+MTTensor    *__mt_tensor_mul(MTTensor *a, MTTensor *b);
+MTTensor    *__mt_tensor_matmul(MTTensor *a, MTTensor *b);
+MTTensor    *__mt_tensor_div(MTTensor *a, MTTensor *b);
+MTTensor    *__mt_tensor_neg(MTTensor *t);
+MTTensor    *__mt_tensor_transpose(MTTensor *t);
 
 /**
  * A helper to add dependency of a tensor (as a node in computation graph).
@@ -678,8 +685,6 @@ MTTensor *__mt_grad_unbroadcast(MTTensor *grad, MTTensor *wrt_tensor) {
 }
 
 /* addition operation */
-float __add(float a, float b) { return a + b; }
-
 MTTensor *__add_backward_a(Dependency **prtdeps, MTTensor *grad) {
         MTTensor *a = prtdeps[0]->tensor;
         return __mt_grad_unbroadcast(grad, a);
@@ -693,6 +698,7 @@ MTTensor *__add_backward_b(Dependency **prtdeps, MTTensor *grad) {
 MTTensor *__mt_tensor_add(MTTensor *a, MTTensor *b) {
         return mt_tensor_bfunc(a, b, __add);
 }
+
 MTTensor *mt_tensor_add(MTTensor *a, MTTensor *b) {
         MTTensor *res = __mt_tensor_add(a, b);
         if (a->req_grad || b->req_grad) mt_tensor_enable_grad(res);
@@ -702,8 +708,6 @@ MTTensor *mt_tensor_add(MTTensor *a, MTTensor *b) {
 }
 
 /* subtraction operation */
-inline float __sub(float a, float b) { return a - b; }
-
 MTTensor *__sub_backward_a(Dependency **prtdeps, MTTensor *grad) {
         MTTensor *a = prtdeps[0]->tensor;
         return __mt_grad_unbroadcast(grad, a);
@@ -727,8 +731,6 @@ MTTensor *mt_tensor_sub(MTTensor *a, MTTensor *b) {
 }
 
 /* element-wise multiplication operation */
-inline float __mul(float a, float b) { return a * b; }
-
 MTTensor *__mul_backward_a(Dependency **prtdeps, MTTensor *grad) {
         MTTensor *b = prtdeps[1]->tensor;
         grad        = __mt_tensor_mul(grad, b);
@@ -803,9 +805,17 @@ MTTensor *mt_tensor_matmul(MTTensor *a, MTTensor *b) {
         return res;
 }
 
-/* negation operation */
-inline float __neg(float x) { return -x; }
+/* division operation */
+MTTensor *__mt_tensor_div(MTTensor *a, MTTensor *b) {
+        return mt_tensor_bfunc(a, b, __div);
+}
 
+MTTensor *mt_tensor_div(MTTensor *a, MTTensor *b) {
+        MTTensor *res = __mt_tensor_div(a, b);
+        return res;
+}
+
+/* negation operation */
 MTTensor *__neg_backward(Dependency **prtdeps, MTTensor *grad) {
         return __mt_tensor_neg(grad);
 }
@@ -822,15 +832,13 @@ MTTensor *mt_tensor_neg(MTTensor *t) {
 }
 
 /* (natural) logarithm operation */
-inline float __mt_log(float x) { return logf(x); }
-MTTensor    *__mt_tensor_log(MTTensor *t) {
-           return mt_tensor_ufunc(t, __mt_log);
+MTTensor *__mt_tensor_log(MTTensor *t) {
+        return mt_tensor_ufunc(t, __mt_log);
 }
 
-inline float __div(float x, float y) { return x / y; }
-MTTensor    *__log_backward(Dependency **prtdeps, MTTensor *grad) {
-           MTTensor *t = prtdeps[0]->tensor;
-           return mt_tensor_bfunc(grad, t, __div);
+MTTensor *__log_backward(Dependency **prtdeps, MTTensor *grad) {
+        MTTensor *t = prtdeps[0]->tensor;
+        return mt_tensor_bfunc(grad, t, __div);
 }
 
 MTTensor *mt_tensor_log(MTTensor *t) {

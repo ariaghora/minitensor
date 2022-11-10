@@ -112,35 +112,44 @@ struct MTTensor {
 /**
  *  MTTensor main API
  */
-MTTensor  *mt_alloc_empty_tensor(MTContext *ctx);
-MTTensor  *mt_new_tensor(MTContext *context, float *data,
-                         int *shape, int ndim);
-MTTensor  *mt_new_tensor_full(MTContext *context,
-                              float val, int *shape,
-                              int ndim);
-float      mt_tensor_get(MTTensor *t, int *idx, int ndims);
-float      mt_tensor_get_v(MTTensor *t);
-float      mt_tensor_get_1(MTTensor *t, int i);
-float      mt_tensor_get_2(MTTensor *t, int i, int j);
-float      mt_tensor_get_3(MTTensor *t, int i, int j, int k);
-MTTensor  *mt_new_scalar(MTContext *context, float val);
-MTTensor  *mt_tensor_slice(MTContext *ctx, MTTensor *t, int dim,
-                           int *index, int indexlen);
-MTTensor  *mt_tensor_sum(MTTensor *t, int dim, int keepdims);
-void       mt_tensor_free(MTTensor *t);
-MTTensor  *mt_tensor_reduce(MTTensor *t, int dim, BFunc bfunc,
-                            int keepdims);
-MTTensor  *mt_tensor_bfunc(MTTensor *a, MTTensor *b, BFunc bfunc);
-MTTensor  *mt_tensor_ufunc(MTTensor *t, UFunc ufunc);
-MTTensor  *mt_tensor_add(MTTensor *a, MTTensor *b);
-MTTensor  *mt_tensor_sub(MTTensor *a, MTTensor *b);
-MTTensor  *mt_tensor_mul(MTTensor *a, MTTensor *b);
-MTTensor  *mt_tensor_matmul(MTTensor *a, MTTensor *b);
-MTTensor  *mt_tensor_div(MTTensor *a, MTTensor *b);
-MTTensor  *mt_tensor_neg(MTTensor *t);
-MTTensor  *mt_tensor_log(MTTensor *t);
-MTTensor  *mt_tensor_relu(MTTensor *t);
-MTTensor  *mt_tensor_transpose(MTTensor *t);
+MTTensor *mt_alloc_empty_tensor(MTContext *ctx);
+MTTensor *mt_new_tensor(MTContext *context, float *data,
+                        int *shape, int ndim);
+MTTensor *mt_new_tensor_full(MTContext *context,
+                             float val, int *shape,
+                             int ndim);
+float     mt_tensor_get(MTTensor *t, int *idx, int ndims);
+float     mt_tensor_get_v(MTTensor *t);
+float     mt_tensor_get_1(MTTensor *t, int i);
+float     mt_tensor_get_2(MTTensor *t, int i, int j);
+float     mt_tensor_get_3(MTTensor *t, int i, int j, int k);
+MTTensor *mt_new_scalar(MTContext *context, float val);
+MTTensor *mt_tensor_slice(MTContext *ctx, MTTensor *t, int dim,
+                          int *index, int indexlen);
+MTTensor *mt_tensor_sum(MTTensor *t, int dim, int keepdims);
+void      mt_tensor_free(MTTensor *t);
+MTTensor *mt_tensor_reduce(MTTensor *t, int dim, BFunc bfunc,
+                           int keepdims);
+/**
+ * Tensor binary functions
+ */
+MTTensor *mt_tensor_bfunc(MTTensor *a, MTTensor *b, BFunc bfunc);
+MTTensor *mt_tensor_ufunc(MTTensor *t, UFunc ufunc);
+MTTensor *mt_tensor_add(MTTensor *a, MTTensor *b);
+MTTensor *mt_tensor_sub(MTTensor *a, MTTensor *b);
+MTTensor *mt_tensor_mul(MTTensor *a, MTTensor *b);
+MTTensor *mt_tensor_matmul(MTTensor *a, MTTensor *b);
+MTTensor *mt_tensor_div(MTTensor *a, MTTensor *b);
+
+/**
+ * Tensor unary functions
+ */
+MTTensor *mt_tensor_exp(MTTensor *t);
+MTTensor *mt_tensor_neg(MTTensor *t);
+MTTensor *mt_tensor_log(MTTensor *t);
+MTTensor *mt_tensor_relu(MTTensor *t);
+MTTensor *mt_tensor_transpose(MTTensor *t);
+
 MTContext *mt_new_context(void);
 void       mt_context_push_tensor(MTContext *ctx, MTTensor *t);
 void       mt_context_free(MTContext *ctx);
@@ -159,6 +168,7 @@ typedef enum { BC_STATUS_NO_BCAST_REQUIRED,
                BC_STATUS_SKIP_SCALAR_HANDLING,
                BC_STATUS_SUCCESS,
                BC_STATUS_FAILURE } BcastStatus;
+
 struct BcastResult {
         MTTensor   *left;
         MTTensor   *right;

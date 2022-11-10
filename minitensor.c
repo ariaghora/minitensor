@@ -18,8 +18,21 @@
  *
  ****************************************************************************/
 
-#define INITIAL_CAP 18
+#define INITIAL_CAP 8
 #define INITIAL_N_DEPS 4
+
+#define __mt_newptr(type, len) ((type *)calloc((len), sizeof(type)))
+#define __mt_memcpy(to, from, len) (memcpy(to, from, (len) * sizeof(*from)))
+#define __mt_arrsame(a, b, len) ({                               \
+        int __mt_issame = 1;                                     \
+        for (long i = 0; i < len; i++)                           \
+                __mt_issame = __mt_issame && ((a[i]) == (b[i])); \
+        __mt_issame;                                             \
+})
+#define EXIT_WITH_ERROR(msg) ({     \
+        printf("error: %s\n", msg); \
+        exit(1);                    \
+})
 
 #define __find_in_list(container, to_find, len) ({   \
         int __found = -1;                            \

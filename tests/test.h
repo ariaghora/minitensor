@@ -14,6 +14,13 @@ typedef struct {
         }                                                                                 \
 })
 
+#define __mt_arrsame(a, b, len) ({                               \
+        int __mt_issame = 1;                                     \
+        for (long i = 0; i < len; i++)                           \
+                __mt_issame = __mt_issame && ((a[i]) == (b[i])); \
+        __mt_issame;                                             \
+})
+
 /* testing tensor core functionality */
 void run_tensor_creation_tests(Test *);
 void run_tensor_slice_tests(Test *);

@@ -23,16 +23,19 @@ typedef enum { DEVICE_CPU,
  * function
  */
 typedef float (*BFunc)(float, float);
+
 /**
  * UFunc: the float-valued unary function, alias for float(float)
  * function
  */
 typedef float (*UFunc)(float);
+
 /**
  * TensorBFunc: the tensor-tensor binary function, alias for
  * MTTensor*(MTTensor**, MTTensor*) function
  */
 typedef MTTensor *(*TensorBFunc)(MTTensor *, MTTensor *);
+
 /**
  * TensorBackwardFunc: the backward function type, alias for
  * MTTensor*(MTTensor**, MTTensor*) function
@@ -102,11 +105,13 @@ struct MTTensor {
         int *strides;
         /* The reference to a context */
         MTContext *context;
-        /* A list of tensors dependent on this tensor (in computational graph).
-         */
+        /* A list of tensors dependent on this tensor (in computational
+         * graph). */
         Dependency **deps;
-        MTTensor    *grad;
-        MTTensor    *parent;
+        /* The gradient of this tensor, NULL when req_grad=0 */
+        MTTensor *grad;
+        /* A reference to parent node */
+        MTTensor *parent;
 };
 
 /**
@@ -130,9 +135,9 @@ MTTensor *mt_tensor_sum(MTTensor *t, int dim, int keepdims);
 void      mt_tensor_free(MTTensor *t);
 MTTensor *mt_tensor_reduce(MTTensor *t, int dim, BFunc bfunc,
                            int keepdims);
-/**
- * Tensor binary functions
- */
+int       mt_is_tensor_eq(MTTensor *a, MTTensor *b);
+
+/* Tensor binary functions */
 MTTensor *mt_tensor_bfunc(MTTensor *a, MTTensor *b, BFunc bfunc);
 MTTensor *mt_tensor_ufunc(MTTensor *t, UFunc ufunc);
 MTTensor *mt_tensor_add(MTTensor *a, MTTensor *b);
@@ -141,9 +146,7 @@ MTTensor *mt_tensor_mul(MTTensor *a, MTTensor *b);
 MTTensor *mt_tensor_matmul(MTTensor *a, MTTensor *b);
 MTTensor *mt_tensor_div(MTTensor *a, MTTensor *b);
 
-/**
- * Tensor unary functions
- */
+/* Tensor unary functions */
 MTTensor *mt_tensor_exp(MTTensor *t);
 MTTensor *mt_tensor_neg(MTTensor *t);
 MTTensor *mt_tensor_log(MTTensor *t);
@@ -151,13 +154,11 @@ MTTensor *mt_tensor_relu(MTTensor *t);
 MTTensor *mt_tensor_transpose(MTTensor *t);
 
 MTContext *mt_new_context(void);
-void       mt_context_push_tensor(MTContext *ctx, MTTensor *t);
 void       mt_context_free(MTContext *ctx);
 void       mt_tensor_enable_grad(MTTensor *t);
 void       mt_tensor_disable_grad(MTTensor *t);
 void       mt_tensor_backward(MTTensor *t, MTTensor *grad);
 void       mt_tensor_zero_grad(MTTensor *t);
-int        mt_is_tensor_eq(MTTensor *a, MTTensor *b);
 void       mt_tensor_print_debug(MTTensor *t);
 
 /**
@@ -188,6 +189,12 @@ struct Dependency {
 BcastResult mt_broadcast_lr(MTTensor *left, MTTensor *right);
 
 /**
+ * Append a tensor into a tracked list in a context. This function will be
+ * called in every tensor allocation via mt_alloc_empty_tensor
+ */
+void mt_context_push_tensor(MTContext *ctx, MTTensor *t);
+
+/**
  * remove `targetdim` dimension if it is a singleton dimension. Otherwise,
  * the program will close with error. The shape output determination depends on
  * strides and indices arrays (as arguments). This function modifies shape,
@@ -214,19 +221,7 @@ float *mt_tensor_get_all_data_constrained(MTTensor *t, int **indices,
                                           int *shape, int *strides, int ndims);
 
 /* helper macros */
-#define __mt_newptr(type, len) ((type *)calloc((len), sizeof(type)))
-#define __mt_memcpy(to, from, len) (memcpy(to, from, (len) * sizeof(*from)))
-#define __mt_arrsame(a, b, len) ({                               \
-        int __mt_issame = 1;                                     \
-        for (long i = 0; i < len; i++)                           \
-                __mt_issame = __mt_issame && ((a[i]) == (b[i])); \
-        __mt_issame;                                             \
-})
-/* array inline expression literal */
+/*  inline expression literal for stack-allocated array */
 #define Arr(type, ...) ((type[]){__VA_ARGS__})
-#define EXIT_WITH_ERROR(msg) ({     \
-        printf("error: %s\n", msg); \
-        exit(1);                    \
-})
 
 #endif

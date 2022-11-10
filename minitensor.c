@@ -430,10 +430,8 @@ void mt_tensor_free(MTTensor *t) {
                                                 t->context->ntracked);
                 if (idxtracker > -1) t->context->tracked[idxtracker] = NULL;
 
-                for (int i = 0; i < t->ndeps; i++) {
-                        free(t->deps[i]);
-                        t->deps[i] = NULL;
-                }
+                for (int i = 0; i < t->ndeps; i++) free(t->deps[i]);
+
                 free(t->deps);
 
                 free(t->data);
@@ -528,11 +526,15 @@ MTTensor *__mt_tensor_transpose(MTTensor *t);
  */
 inline void __mt_push_deps_at(MTTensor *t, MTTensor *t_dep, int at,
                               TensorBackwardFunc grad_fn) {
-        Dependency *dep = __mt_newptr(Dependency, 1);
-        dep->tensor     = t_dep;
-        dep->grad_fn    = grad_fn;
-        t->deps[at]     = dep;
-        t_dep->parent   = t;
+        if (t_dep->req_grad) {
+                Dependency *dep = __mt_newptr(Dependency, 1);
+                dep->tensor     = t_dep;
+                dep->grad_fn    = grad_fn;
+                t->deps[at]     = dep;
+                t_dep->parent   = t;
+        } else {
+                t->deps[at] = NULL;
+        }
         t->ndeps++;
 }
 

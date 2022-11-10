@@ -7,9 +7,16 @@
 
 #define INITIAL_CAP 8
 #define INITIAL_N_DEPS 4
+#define MT_EPS 1e-6
 
 #define __mt_newptr(type, len) ((type *)calloc((len), sizeof(type)))
 #define __mt_memcpy(to, from, len) (memcpy(to, from, (len) * sizeof(*from)))
+#define __mt_arrsame_eps(a, b, len) ({                                       \
+        int __mt_issame = 1;                                                 \
+        for (long i = 0; i < len; i++)                                       \
+                __mt_issame = __mt_issame && (abs(a[i]) - (b[i]) <= MT_EPS); \
+        __mt_issame;                                                         \
+})
 #define __mt_arrsame(a, b, len) ({                               \
         int __mt_issame = 1;                                     \
         for (long i = 0; i < len; i++)                           \
@@ -512,6 +519,16 @@ int mt_is_tensor_eq(MTTensor *a, MTTensor *b) {
                __mt_arrsame(a->shape, b->shape, a->ndims);
 }
 
+int mt_is_tensor_almost_eq(MTTensor *a, MTTensor *b) {
+        /* NULL guard */
+        if ((a == NULL) && (b != NULL)) return 0;
+        if ((a != NULL) && (b == NULL)) return 0;
+
+        if (a->ndims != b->ndims) return 0;
+        return __mt_arrsame_eps(a->data, b->data, a->datalen) &&
+               __mt_arrsame_eps(a->shape, b->shape, a->ndims);
+}
+
 /**
  * Math implementation
  */
@@ -840,6 +857,25 @@ MTTensor *mt_tensor_div(MTTensor *a, MTTensor *b) {
         __mt_push_deps_at(res, b, 1, __div_backward_b);
 
         // MTTensor *res = mt_tensor_mul(a, mt_tensor_ufunc(b, __recip));
+        return res;
+}
+
+/* exponentiation operation */
+inline float __expf(float x) { return expf(x); }
+
+MTTensor *__mt_tensor_exp(MTTensor *t) {
+        return mt_tensor_ufunc(t, __expf);
+}
+
+MTTensor *__exp_backward(Dependency **prtdeps, MTTensor *grad) {
+        MTTensor *t = prtdeps[0]->tensor;
+        return mt_tensor_mul(grad, __mt_tensor_exp(t));
+}
+
+MTTensor *mt_tensor_exp(MTTensor *t) {
+        MTTensor *res = __mt_tensor_exp(t);
+        if (t->req_grad) mt_tensor_enable_grad(res);
+        __mt_push_deps_at(res, t, 0, __exp_backward);
         return res;
 }
 

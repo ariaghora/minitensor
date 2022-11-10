@@ -144,6 +144,7 @@ void      mt_tensor_free(MTTensor *t);
 MTTensor *mt_tensor_reduce(MTTensor *t, int dim, BFunc bfunc,
                            int keepdims);
 int       mt_is_tensor_eq(MTTensor *a, MTTensor *b);
+int       mt_is_tensor_almost_eq(MTTensor *a, MTTensor *b);
 
 /* Tensor binary functions */
 MTTensor *mt_tensor_bfunc(MTTensor *a, MTTensor *b, BFunc bfunc);

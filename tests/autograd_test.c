@@ -196,6 +196,44 @@ void run_autograd_matmul_tests(Test *t) {
         mt_context_free(ctx);
 }
 
+void run_autograd_exp_tests(Test *t) {
+        MTContext *ctx    = mt_new_context();
+        MTTensor  *x      = mt_new_tensor(ctx, Arr(float, 0, 2, 4, 6), Arr(int, 4), 1);
+        MTTensor  *x_grad = mt_new_tensor(ctx,
+                                          Arr(float, 1.0, 7.389056205749512, 54.598148345947266, 403.4288024902344),
+                                          Arr(int, 4), 1);
+        mt_tensor_enable_grad(x);
+
+        MTTensor *res  = mt_tensor_exp(x);
+        MTTensor *grad = mt_new_tensor_full(ctx, 1, Arr(int, 4), 1);
+        mt_tensor_backward(res, grad);
+
+        /* test x.grad after exp(x) backward */
+        mt_assert_true(
+            t,
+            mt_is_tensor_almost_eq(x->grad, x_grad),
+            "test exp grad 1",
+            "Should be {1.0, 7.39, 54.60, 403.43}");
+
+        /* test x.grad after exp(exp(x)) backward */
+        x      = mt_new_tensor(ctx, Arr(float, 1.0, 0.1, 0.01, 0.001), Arr(int, 4), 1);
+        x_grad = mt_new_tensor(ctx,
+                               Arr(float, 41.19355010986328, 3.337329864501953, 2.773333787918091, 2.7237253189086914),
+                               Arr(int, 4), 1);
+        mt_tensor_enable_grad(x);
+        res = mt_tensor_exp(mt_tensor_exp(x));
+        mt_tensor_backward(res, grad);
+
+        mt_assert_true(
+            t,
+            mt_is_tensor_almost_eq(x->grad, x_grad),
+            "test exp grad 1",
+            "Should be equals to {41.19, 3.34, 2.77, 2.72}");
+        mt_tensor_print_debug(x->grad);
+
+        mt_context_free(ctx);
+}
+
 void run_autograd_neg_tests(Test *t) {
         MTContext *ctx = mt_new_context();
         MTTensor  *x   = mt_new_tensor(ctx, Arr(float, 1, 2, 3), Arr(int, 3), 1);
